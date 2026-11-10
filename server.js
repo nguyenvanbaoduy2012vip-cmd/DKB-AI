@@ -4,6 +4,7 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 10000;
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+const TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 30000;
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
@@ -29,14 +30,27 @@ QUY TẮC:
 - Không nói DKB AI tự huấn luyện mô hình riêng.
 - Công nghệ nền tảng là Gemini API.
 - Trả lời trung thực, không bịa đặt thông tin.
-- Sử dụng Google Search khi cần thông tin mới.
+- Dùng Google Search khi cần thông tin mới và nêu rõ nguồn nếu có.
 - Phân biệt kiến thức có sẵn và thông tin vừa tìm kiếm.
 - Không nhầm ngày hiện tại với dữ liệu huấn luyện.
-- Không bịa thông tin mới nếu không có nguồn kiểm chứng.
+- Không nói rằng bạn không có quyền truy cập ngày giờ nếu máy chủ đã cung cấp thời gian.
 `;
 
-// Lấy ngày, giờ, phút, giây theo múi giờ Việt Nam.
-// Hàm được gọi ở MỖI request chat nên thời gian luôn được cập nhật.
+function getVietnamParts() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date());
+
+  return Object.fromEntries(parts.map(p => [p.type, p.value]));
+}
+
 function getVietnamDateTime() {
   return new Intl.DateTimeFormat("vi-VN", {
     timeZone: "Asia/Ho_Chi_Minh",
@@ -44,6 +58,52 @@ function getVietnamDateTime() {
     timeStyle: "medium",
     hourCycle: "h23"
   }).format(new Date());
+}
+
+function getVietnamDateISO() {
+  const p = getVietnamParts();
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+function daysUntil(year, month, day) {
+  // Dùng ngày lịch Việt Nam, không bị lệch do múi giờ của máy chủ.
+  const today = getVietnamDateISO().split("-").map(Number);
+  const start = Date.UTC(today[0], today[1] - 1, today[2]);
+  const target = Date.UTC(year, month - 1, day);
+  return Math.round((target - start) / 86400000);
+}
+
+// Xử lý trực tiếp các câu hỏi ngày giờ/lịch phổ biến để câu trả lời chính xác,
+// không phụ thuộc việc mô hình có làm theo system prompt hay không.
+function answerTimeQuestion(message) {
+  const q = message.toLocaleLowerCase("vi").normalize("NFC");
+  const todayISO = getVietnamDateISO();
+  const p = getVietnamParts();
+  const todayText = getVietnamDateTime();
+
+  const asksTime = /(mấy giờ|bây giờ là mấy giờ|giờ hiện tại|thời gian hiện tại)/i.test(q);
+  const asksToday = /(hôm nay là ngày mấy|hôm nay ngày bao nhiêu|ngày hôm nay|hôm nay thứ mấy|hôm nay là thứ mấy)/i.test(q);
+
+  if (asksTime) {
+    return `Hiện tại là ${p.hour}:${p.minute}:${p.second} (giờ Việt Nam, UTC+7), ngày ${todayText}.`;
+  }
+
+  if (asksToday) {
+    return `Hôm nay là ${todayText} (giờ Việt Nam, UTC+7).`;
+  }
+
+  const asksNewYear2027 =
+    /(tết dương lịch|tết tây|năm mới)\s*(2027)?/.test(q) &&
+    /(còn bao nhiêu ngày|bao nhiêu ngày nữa|còn mấy ngày|mấy ngày nữa|khi nào)/.test(q);
+
+  if (asksNewYear2027) {
+    const days = daysUntil(2027, 1, 1);
+    if (days > 0) return `Tết Dương lịch 2027 là ngày 01/01/2027. Tính từ hôm nay (${todayISO}), còn ${days} ngày nữa.`;
+    if (days === 0) return "Hôm nay là Tết Dương lịch 2027 (01/01/2027). Chúc mừng năm mới!";
+    return "Tết Dương lịch 2027 (01/01/2027) đã qua rồi.";
+  }
+
+  return null;
 }
 
 // Trang chủ
@@ -60,6 +120,7 @@ app.get("/api/health", (req, res) => {
     provider: "Gemini API",
     currentDateTime: getVietnamDateTime(),
     timezone: "Asia/Ho_Chi_Minh",
+    timeoutMs: TIMEOUT_MS,
     message: "DKB AI API is running!"
   });
 });
@@ -68,27 +129,12 @@ app.get("/api/health", (req, res) => {
 app.post("/api/chat", async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!apiKey) {
-    return res.status(500).json({
-      error: "Missing API key",
-      details: "GEMINI_API_KEY chưa được cấu hình trên Render."
-    });
-  }
-
-  if (
-    !Array.isArray(req.body?.messages) ||
-    req.body.messages.length === 0
-  ) {
-    return res.status(400).json({
-      error: "Messages are required"
-    });
+  if (!Array.isArray(req.body?.messages) || req.body.messages.length === 0) {
+    return res.status(400).json({ error: "Messages are required" });
   }
 
   if (req.body.messages.length > 50) {
-    return res.status(400).json({
-      error: "Too many messages",
-      details: "Maximum 50 messages per request."
-    });
+    return res.status(400).json({ error: "Too many messages" });
   }
 
   const messages = req.body.messages.slice(-12);
@@ -102,9 +148,7 @@ app.post("/api/chat", async (req, res) => {
       !message.content.trim() ||
       message.content.length > 4000
     ) {
-      return res.status(400).json({
-        error: "Invalid message"
-      });
+      return res.status(400).json({ error: "Invalid message" });
     }
 
     contents.push({
@@ -113,14 +157,35 @@ app.post("/api/chat", async (req, res) => {
     });
   }
 
+  const latestUserMessage = [...messages].reverse().find(m => m.role === "user");
+  const currentDateTime = getVietnamDateTime();
+
+  // Trả lời ngày giờ bằng dữ liệu máy chủ, không gọi Gemini nên gần như tức thì.
+  const directTimeReply = latestUserMessage
+    ? answerTimeQuestion(latestUserMessage.content)
+    : null;
+
+  if (directTimeReply) {
+    return res.json({
+      name: "DKB AI",
+      model: "dkb.flash.lite",
+      currentDateTime,
+      reply: directTimeReply,
+      sources: []
+    });
+  }
+
+  if (!apiKey) {
+    return res.status(500).json({
+      error: "Missing API key",
+      details: "GEMINI_API_KEY chưa được cấu hình trên Render."
+    });
+  }
+
   const controller = new AbortController();
-  const timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 90000;
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    // Lấy thời gian mới nhất ngay khi người dùng gửi tin nhắn
-    const currentDateTime = getVietnamDateTime();
-
     const apiUrl =
       `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
@@ -133,38 +198,31 @@ app.post("/api/chat", async (req, res) => {
       body: JSON.stringify({
         systemInstruction: {
           parts: [{
-            text: SYSTEM_PROMPT + `
+            text: `${SYSTEM_PROMPT}
 
-THỜI GIAN HIỆN TẠI:
+THỜI GIAN HIỆN TẠI DO MÁY CHỦ CUNG CẤP:
 ${currentDateTime}
-Múi giờ: Việt Nam (Asia/Ho_Chi_Minh, UTC+7).
+Múi giờ: Asia/Ho_Chi_Minh (UTC+7).
 
-QUY TẮC THỜI GIAN:
-- Đây là ngày giờ hiện tại chính xác do máy chủ cung cấp.
-- Khi được hỏi hôm nay là ngày nào hoặc bây giờ là mấy giờ, hãy dùng thông tin trên.
-- Không dùng năm 2024 hoặc ngày giờ cũ thay cho thời gian hiện tại.
-- Không nhầm ngày giờ hiện tại với thời điểm dữ liệu huấn luyện.
-- Không tự suy đoán giờ hiện tại nếu đã có thông tin này.
-`
+BẮT BUỘC:
+- Đây là thời gian hiện tại chính xác tại Việt Nam.
+- Nếu người dùng hỏi ngày, giờ hoặc tính khoảng thời gian từ hôm nay, hãy dùng mốc thời gian trên.
+- Tuyệt đối không trả lời rằng bạn không biết ngày giờ hiện tại.
+- Tính số ngày bằng ngày lịch, không tự đoán.`
           }]
         },
         contents,
-        tools: [
-          {
-            google_search: {}
-          }
-        ],
+        tools: [{ google_search: {} }],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.5,
           maxOutputTokens: 2048,
-          topP: 0.95
+          topP: 0.9
         }
       }),
       signal: controller.signal
     });
 
     let result;
-
     try {
       result = await response.json();
     } catch {
@@ -184,7 +242,6 @@ QUY TẮC THỜI GIAN:
     }
 
     const candidate = result.candidates?.[0];
-
     const reply = candidate?.content?.parts
       ?.map(part => part.text || "")
       .join("")
@@ -193,22 +250,16 @@ QUY TẮC THỜI GIAN:
     if (!reply) {
       return res.status(502).json({
         error: "Empty response",
-        details:
-          candidate?.finishReason ||
-          "DKB AI did not generate a response."
+        details: candidate?.finishReason || "DKB AI did not generate a response."
       });
     }
 
-    // Lấy nguồn Google Search nếu Gemini có trả về
-    const chunks =
-      candidate?.groundingMetadata?.groundingChunks || [];
-
+    const chunks = candidate?.groundingMetadata?.groundingChunks || [];
     const sources = [];
     const seen = new Set();
 
     for (const chunk of chunks) {
       const web = chunk.web;
-
       if (web?.uri && !seen.has(web.uri)) {
         seen.add(web.uri);
         sources.push({
@@ -225,35 +276,29 @@ QUY TẮC THỜI GIAN:
       reply,
       sources
     });
-
   } catch (error) {
     if (error?.name === "AbortError") {
       return res.status(504).json({
         error: "Request timeout",
-        details: "Gemini chưa phản hồi trong 90 giây. Hãy thử lại; nếu lặp lại, kiểm tra trạng thái API/model và hạn mức Google AI Studio."
+        details: `Gemini chưa phản hồi trong ${Math.round(TIMEOUT_MS / 1000)} giây. Hãy thử lại sau.`
       });
     }
 
     return res.status(500).json({
       error: "Internal server error",
-      details:
-        error instanceof Error ? error.message : "Unknown server error"
+      details: error instanceof Error ? error.message : "Unknown server error"
     });
-
   } finally {
     clearTimeout(timeout);
   }
 });
 
-// API endpoint không tồn tại
 app.use("/api", (req, res) => {
-  res.status(404).json({
-    error: "API endpoint not found"
-  });
+  res.status(404).json({ error: "API endpoint not found" });
 });
 
-// Khởi động server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`DKB AI server listening on port ${PORT}`);
   console.log(`Vietnam time: ${getVietnamDateTime()}`);
+  console.log(`Gemini timeout: ${TIMEOUT_MS}ms`);
 });
