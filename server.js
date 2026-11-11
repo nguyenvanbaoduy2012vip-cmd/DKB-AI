@@ -7,505 +7,517 @@ const PORT = process.env.PORT || 10000;
 
 const API_KEY = process.env.GROQ_API_KEY;
 const MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
-const TIMEOUT_MS = Number(process.env.GROQ_TIMEOUT_MS) || 60000;
+const VISION_MODEL =
+  process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
 
 const GROQ_URL =
   "https://api.groq.com/openai/v1/chat/completions";
+const AUDIO_URL =
+  "https://api.groq.com/openai/v1/audio/transcriptions";
+
+const TIMEOUT = 90000;
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "8mb" }));
+app.use(express.json({ limit: "30mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-const SYSTEM_PROMPT = `
-Bạn là DKB AI, trợ lý AI thông minh, thân thiện và hữu ích.
+// ==============================
+// THỜI GIAN VIỆT NAM
+// ==============================
 
-THÔNG TIN:
-- Tên: DKB AI.
-- Model hiển thị: dkb.flash.lite.
-- Nhà phát triển chính: BDUY.
-- Cộng tác và thử nghiệm: QUỐC BẢO, TUẤN KIỆT.
-- Nếu được hỏi ai phát triển: BDUY là nhà phát triển chính; QUỐC BẢO và TUẤN KIỆT là cộng tác viên, thành viên thử nghiệm.
-- Ưu tiên trả lời bằng tiếng Việt.
-- Không tự nhận là ChatGPT.
-- Công nghệ nền tảng: Groq API.
-- Không nói DKB AI tự huấn luyện mô hình riêng.
-
-QUY TẮC:
-- Trả lời trung thực, rõ ràng, dễ hiểu.
-- Không bịa thông tin, sự kiện hoặc nguồn tham khảo.
-- Khi có kết quả tìm kiếm Internet, ưu tiên thông tin mới và đáng tin cậy.
-- Khi trả lời thông tin mới, hãy ghi rõ thời điểm hoặc ngày cập nhật nếu có.
-- Nếu tìm thấy nguồn, hãy dẫn đường dẫn nguồn trong câu trả lời.
-- Phân biệt thông tin đã xác minh và thông tin chưa chắc chắn.
-- Không khẳng định thông tin hiện tại nếu chưa có căn cứ.
-
-THỜI GIAN:
-Máy chủ cung cấp thời gian Việt Nam trong từng yêu cầu.
-Dùng chính xác thời gian đó khi được hỏi ngày giờ.
-Múi giờ: Asia/Ho_Chi_Minh (UTC+7).
-`;
-
-function getVietnamDateTime() {
+function getVietnamTime() {
   return new Intl.DateTimeFormat("vi-VN", {
     timeZone: "Asia/Ho_Chi_Minh",
     dateStyle: "full",
-    timeStyle: "medium",
-    hourCycle: "h23"
+    timeStyle: "medium"
   }).format(new Date());
 }
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// ==============================
+// SYSTEM PROMPT
+// ==============================
 
-// KIỂM TRA SERVER
-app.get("/api/health", (req, res) => {
-  res.json({
-    name: "DKB AI",
-    status: "online",
-    model: "dkb.flash.lite",
-    provider: "Groq API",
-    providerModel: MODEL,
-    webSearch: true,
-    currentDateTime: getVietnamDateTime(),
-    timezone: "Asia/Ho_Chi_Minh",
-    features: [
-      "history",
-      "markdown",
-      "web-search",
-      "retry",
-      "voice-input",
-      "dark-mode",
-      "chat-management",
-      "streaming",
-      "performance-settings"
-    ]
-  });
-});
+function systemPrompt() {
+  return `
+Bạn là DKB AI, trợ lý AI trên website DKB AI.
 
+Quy tắc:
+- Trả lời bằng tiếng Việt khi người dùng sử dụng tiếng Việt.
+- Trả lời chính xác, rõ ràng, dễ hiểu.
+- Không tự bịa thông tin hoặc nguồn tham khảo.
+- Nếu không biết, hãy nói rõ.
+- Khi viết code, ưu tiên cung cấp code hoàn chỉnh.
+- Không tự nhận mình là ChatGPT hoặc Gemini.
+- Tên sản phẩm là DKB AI.
+- Nhà phát triển chính: BDUY.
+- Cộng tác viên và kiểm thử: QUỐC BẢO, TUẤN KIỆT.
+- Thời gian Việt Nam hiện tại: ${getVietnamTime()}.
+`;
+}
+
+// ==============================
+// CHẾ ĐỘ LITE / MAX
+// ==============================
+
+function getMode(body) {
+  return String(
+    body.thinkingMode ||
+    body.mode ||
+    body.performance ||
+    "lite"
+  ).toLowerCase() === "max" ? "max" : "lite";
+}
+
+// ==============================
 // KIỂM TRA TIN NHẮN
+// ==============================
+
 function validateMessages(messages) {
-  if (
-    !Array.isArray(messages) ||
-    !messages.length ||
-    messages.length > 50
-  ) {
-    return "Danh sách tin nhắn không hợp lệ.";
+  if (!Array.isArray(messages) || !messages.length) {
+    throw new Error("Tin nhắn không hợp lệ.");
   }
 
-  for (const m of messages) {
+  if (messages.length > 40) {
+    throw new Error("Quá nhiều tin nhắn.");
+  }
+
+  return messages.map(message => {
     if (
-      !m ||
-      !["user", "assistant", "model"].includes(m.role) ||
-      typeof m.content !== "string" ||
-      !m.content.trim() ||
-      m.content.length > 12000
+      !message ||
+      !["user", "assistant"].includes(message.role)
     ) {
-      return "Có tin nhắn không hợp lệ.";
+      throw new Error("Vai trò tin nhắn không hợp lệ.");
     }
 
-    if (m.image) {
-      return "Model tìm kiếm hiện tại chưa hỗ trợ gửi ảnh. Hãy gửi câu hỏi bằng văn bản.";
+    if (typeof message.content === "string") {
+      if (message.content.length > 30000) {
+        throw new Error("Tin nhắn quá dài.");
+      }
+
+      return {
+        role: message.role,
+        content: message.content
+      };
     }
-  }
 
-  return null;
-}
-
-// TẠO LỊCH SỬ GỬI CHO GROQ
-function buildMessages(messages, currentDateTime) {
-  const result = [
-    {
-      role: "system",
-      content:
-        SYSTEM_PROMPT +
-        "\n\nTHỜI GIAN HIỆN TẠI: " +
-        currentDateTime
+    if (!Array.isArray(message.content)) {
+      throw new Error("Nội dung không hợp lệ.");
     }
-  ];
 
-  for (const m of messages.slice(-12)) {
-    result.push({
-      role:
-        m.role === "assistant" || m.role === "model"
-          ? "assistant"
-          : "user",
-      content: m.content
-    });
-  }
+    for (const item of message.content) {
+      if (item.type === "text") {
+        if (typeof item.text !== "string") {
+          throw new Error("Văn bản không hợp lệ.");
+        }
+      } else if (item.type === "image_url") {
+        const url = item.image_url?.url;
 
-  return result;
-}
+        if (
+          typeof url !== "string" ||
+          !/^(https?:\/\/|data:image\/)/i.test(url)
+        ) {
+          throw new Error("Ảnh không hợp lệ.");
+        }
+      } else {
+        throw new Error("Loại nội dung không hỗ trợ.");
+      }
+    }
 
-// CẤU HÌNH HIỆU SUẤT
-function getPerformance(performance) {
-  if (performance === "fast") {
     return {
-      reasoning_effort: "low",
-      max_completion_tokens: 1024
+      role: message.role,
+      content: message.content
     };
-  }
-
-  if (performance === "deep") {
-    return {
-      reasoning_effort: "high",
-      max_completion_tokens: 4096
-    };
-  }
-
-  return {
-    reasoning_effort: "medium",
-    max_completion_tokens: 2048
-  };
+  });
 }
 
-// TẠO REQUEST GROQ
-function getRequestBody(
-  messages,
-  performance,
-  useSearch,
-  stream
-) {
-  const body = {
-    model: MODEL,
-    messages,
-    ...getPerformance(performance),
-    temperature: 1,
-    top_p: 1,
+// ==============================
+// KIỂM TRA ẢNH
+// ==============================
+
+function containsImage(messages) {
+  const last = [...messages]
+    .reverse()
+    .find(message => message.role === "user");
+
+  return Boolean(
+    last &&
+    Array.isArray(last.content) &&
+    last.content.some(item => item.type === "image_url")
+  );
+}
+
+// ==============================
+// TẠO REQUEST
+// ==============================
+
+function buildRequest(body, stream = false) {
+  const messages = validateMessages(body.messages);
+  const mode = getMode(body);
+  const hasImage = containsImage(messages);
+  const useSearch = body.useSearch === true && !hasImage;
+
+  const model = hasImage ? VISION_MODEL : MODEL;
+
+  const payload = {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt()
+      },
+      ...messages.slice(-16)
+    ],
+    temperature: 0.6,
+    max_completion_tokens: mode === "max" ? 8192 : 4096,
     stream
   };
 
-  // BẬT TÌM KIẾM INTERNET
+  if (
+    !hasImage &&
+    model.startsWith("openai/gpt-oss")
+  ) {
+    payload.reasoning_effort =
+      mode === "max" ? "high" : "low";
+  }
+
   if (useSearch) {
-    body.tools = [
-      {
-        type: "browser_search"
-      }
+    payload.tools = [
+      { type: "browser_search" }
     ];
-
-    body.tool_choice = "auto";
+    payload.tool_choice = "auto";
   }
 
-  return body;
+  return {
+    payload,
+    mode,
+    model,
+    useSearch
+  };
 }
 
-// LẤY NGUỒN THAM KHẢO TỪ KẾT QUẢ GROQ
-function collectSources(data) {
-  const sources = [];
-  const seen = new Set();
+// ==============================
+// GỌI GROQ API
+// ==============================
 
-  function walk(value, depth = 0) {
-    if (!value || typeof value !== "object" || depth > 10) {
-      return;
-    }
-
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        walk(item, depth + 1);
-      }
-      return;
-    }
-
-    if (
-      typeof value.url === "string" &&
-      /^https?:\/\//i.test(value.url)
-    ) {
-      if (!seen.has(value.url)) {
-        seen.add(value.url);
-
-        sources.push({
-          title:
-            value.title ||
-            value.name ||
-            "Nguồn tham khảo",
-          url: value.url
-        });
-      }
-    }
-
-    for (const key of Object.keys(value)) {
-      walk(value[key], depth + 1);
-    }
+async function groqRequest(url, options = {}) {
+  if (!API_KEY) {
+    throw new Error(
+      "GROQ_API_KEY chưa được cấu hình trên Render."
+    );
   }
 
-  walk(data);
+  const controller = new AbortController();
 
-  return sources.slice(0, 10);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    TIMEOUT
+  );
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        ...(options.headers || {})
+      }
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian chờ.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
-function getReply(result) {
-  const content = result?.choices?.[0]?.message?.content;
+// ==============================
+// ĐỌC PHẢN HỒI API
+// ==============================
+
+async function readResponse(response) {
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ||
+      `Groq API lỗi HTTP ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+function extractReply(data) {
+  const content = data?.choices?.[0]?.message?.content;
 
   if (typeof content === "string") {
-    return content.trim();
+    return content;
   }
 
   if (Array.isArray(content)) {
     return content
       .map(item => item.text || "")
-      .join("")
-      .trim();
+      .join("");
   }
 
   return "";
 }
 
-function getGroqError(result) {
-  return (
-    result?.error?.message ||
-    result?.message ||
-    "Không thể kết nối Groq API."
-  );
+// ==============================
+// LẤY NGUỒN THAM KHẢO
+// ==============================
+
+function collectSources(data) {
+  const sources = new Map();
+  const seen = new WeakSet();
+
+  function scan(value) {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      seen.has(value)
+    ) {
+      return;
+    }
+
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      value.forEach(scan);
+      return;
+    }
+
+    for (const [key, item] of Object.entries(value)) {
+      if (
+        typeof item === "string" &&
+        /^https?:\/\//i.test(item) &&
+        [
+          "url",
+          "uri",
+          "link",
+          "source_url",
+          "web_url"
+        ].includes(key)
+      ) {
+        sources.set(item, {
+          url: item,
+          title: value.title || value.name || item
+        });
+      }
+
+      if (item && typeof item === "object") {
+        scan(item);
+      }
+    }
+  }
+
+  scan(data);
+
+  return [...sources.values()].slice(0, 15);
 }
 
-// CHAT THƯỜNG
+// ==============================
+// HEALTH CHECK
+// ==============================
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    name: "DKB AI",
+    status: "online",
+    provider: "Groq API",
+    model: "dkb.flash.lite",
+    providerModel: MODEL,
+    visionModel: VISION_MODEL,
+    thinkingModes: ["lite", "max"],
+    search: true,
+    imageSupport: true,
+    audioTranscription: true,
+    apiKeyConfigured: Boolean(API_KEY),
+    currentDateTime: getVietnamTime(),
+    timezone: "Asia/Ho_Chi_Minh"
+  });
+});
+
+// ==============================
+// CHAT THÔNG THƯỜNG
+// ==============================
+
 app.post("/api/chat", async (req, res) => {
-  if (!API_KEY) {
-    return res.status(500).json({
-      error: "Missing API key",
-      details: "GROQ_API_KEY chưa được cấu hình trên Render."
-    });
-  }
-
-  const invalid = validateMessages(req.body?.messages);
-
-  if (invalid) {
-    return res.status(400).json({
-      error: "Invalid messages",
-      details: invalid
-    });
-  }
-
-  const currentDateTime = getVietnamDateTime();
-
-  const performance = [
-    "fast",
-    "balanced",
-    "deep"
-  ].includes(req.body.performance)
-    ? req.body.performance
-    : "balanced";
-
-  const useSearch = req.body.useSearch !== false;
-
-  const controller = new AbortController();
-
-  const timeout = setTimeout(
-    () => controller.abort(),
-    TIMEOUT_MS
-  );
-
   try {
-    const response = await fetch(GROQ_URL, {
+    const {
+      payload,
+      mode,
+      model,
+      useSearch
+    } = buildRequest(req.body, false);
+
+    const response = await groqRequest(GROQ_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(
-        getRequestBody(
-          buildMessages(req.body.messages, currentDateTime),
-          performance,
-          useSearch,
-          false
-        )
-      ),
-      signal: controller.signal
+      body: JSON.stringify(payload)
     });
 
-    const result = await response.json().catch(() => ({}));
+    const data = await readResponse(response);
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "Groq API error",
-        details: getGroqError(result),
-        status: response.status,
-        model: MODEL
-      });
-    }
-
-    const reply = getReply(result);
+    const reply = extractReply(data);
 
     if (!reply) {
-      return res.status(502).json({
-        error: "Empty response",
-        details: "DKB AI chưa tạo được câu trả lời."
-      });
+      throw new Error(
+        "AI không trả về nội dung. Hãy thử lại."
+      );
     }
 
-    const sources = collectSources(
-      result.choices?.[0]?.message
-    );
-
     res.json({
-      name: "DKB AI",
-      model: "dkb.flash.lite",
-      provider: "Groq",
-      currentDateTime,
       reply,
-      sources
+      sources: collectSources(data),
+      mode,
+      model: "dkb.flash.lite",
+      providerModel: model,
+      searched: useSearch,
+      currentDateTime: getVietnamTime()
     });
 
   } catch (error) {
-    if (error.name === "AbortError") {
-      return res.status(504).json({
-        error: "Request timeout",
-        details: "Groq chưa phản hồi trong thời gian cho phép."
-      });
-    }
+    console.error("CHAT ERROR:", error);
 
     res.status(500).json({
-      error: "Internal server error",
-      details: error.message || "Unknown error"
+      error: error.message || "Không thể kết nối DKB AI."
     });
-
-  } finally {
-    clearTimeout(timeout);
   }
 });
 
-// CHAT STREAMING + WEB SEARCH
+// ==============================
+// CHAT STREAMING - SSE
+// ==============================
+
 app.post("/api/chat-stream", async (req, res) => {
-  if (!API_KEY) {
-    return res.status(500).json({
-      error: "Missing API key",
-      details: "GROQ_API_KEY chưa được cấu hình trên Render."
-    });
-  }
-
-  const invalid = validateMessages(req.body?.messages);
-
-  if (invalid) {
-    return res.status(400).json({
-      error: "Invalid messages",
-      details: invalid
-    });
-  }
-
-  const currentDateTime = getVietnamDateTime();
-
-  const performance = [
-    "fast",
-    "balanced",
-    "deep"
-  ].includes(req.body.performance)
-    ? req.body.performance
-    : "balanced";
-
-  const useSearch = req.body.useSearch !== false;
-
-  const controller = new AbortController();
+  let reader = null;
+  let clientClosed = false;
 
   res.on("close", () => {
-    if (!res.writableEnded) {
-      controller.abort();
+    clientClosed = true;
+
+    if (reader) {
+      reader.cancel().catch(() => {});
     }
   });
 
-  const timeout = setTimeout(
-    () => controller.abort(),
-    TIMEOUT_MS
-  );
+  function sendEvent(event, data) {
+    if (clientClosed || res.destroyed) return;
+
+    res.write(
+      `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+    );
+  }
 
   try {
-    const upstream = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify(
-        getRequestBody(
-          buildMessages(req.body.messages, currentDateTime),
-          performance,
-          useSearch,
-          !useSearch
-        )
-      ),
-      signal: controller.signal
-    });
-
-    if (!upstream.ok) {
-      const err = await upstream.json().catch(() => ({}));
-
-      return res.status(upstream.status).json({
-        error: "Groq API error",
-        details: getGroqError(err),
-        status: upstream.status,
-        model: MODEL
-      });
-    }
+    const {
+      payload,
+      mode,
+      model,
+      useSearch
+    } = buildRequest(req.body, true);
 
     res.status(200);
-    res.setHeader(
-      "Content-Type",
-      "text/event-stream; charset=utf-8"
-    );
-    res.setHeader(
-      "Cache-Control",
-      "no-cache, no-transform"
-    );
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
 
-    // SEARCH: GROQ TÌM KIẾM XONG RỒI TRẢ KẾT QUẢ
+    // Khi bật tìm kiếm, dùng phản hồi đầy đủ
+    // để nhận nội dung và dữ liệu nguồn.
     if (useSearch) {
-      const result = await upstream.json();
+      const response = await groqRequest(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...payload,
+          stream: false
+        })
+      });
 
-      const reply = getReply(result);
+      const data = await readResponse(response);
+      const reply = extractReply(data);
 
-      if (reply) {
-        res.write(
-          `data: ${JSON.stringify({
-            type: "text",
-            text: reply
-          })}\n\n`
-        );
+      if (!reply) {
+        throw new Error("AI không trả về nội dung.");
       }
 
-      const sources = collectSources(
-        result.choices?.[0]?.message
-      );
+      sendEvent("token", { text: reply });
 
-      res.write(
-        `data: ${JSON.stringify({
-          type: "done",
-          currentDateTime,
-          sources
-        })}\n\n`
-      );
+      sendEvent("sources", {
+        sources: collectSources(data)
+      });
 
-      res.end();
-      return;
+      sendEvent("done", {
+        mode,
+        model: "dkb.flash.lite",
+        providerModel: model,
+        searched: true,
+        currentDateTime: getVietnamTime()
+      });
+
+      return res.end();
     }
 
-    // KHÔNG SEARCH: STREAMING TỪNG PHẦN
-    const reader = upstream.body.getReader();
-    const decoder = new TextDecoder();
+    // Streaming thông thường
+    const response = await groqRequest(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...payload,
+        stream: true
+      })
+    });
 
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+
+      throw new Error(
+        data?.error?.message ||
+        `Groq API lỗi HTTP ${response.status}`
+      );
+    }
+
+    if (!response.body) {
+      throw new Error("Không nhận được dữ liệu streaming.");
+    }
+
+    reader = response.body.getReader();
+
+    const decoder = new TextDecoder();
     let buffer = "";
 
-    while (true) {
+    while (!clientClosed) {
       const { value, done } = await reader.read();
 
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, {
+        stream: true
+      });
 
-      const events = buffer.split("\n\n");
-      buffer = events.pop() || "";
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-      for (const event of events) {
-        const line = event
-          .split("\n")
-          .find(item => item.startsWith("data:"));
+      for (const line of lines) {
+        const trimmed = line.trim();
 
-        if (!line) continue;
+        if (!trimmed.startsWith("data:")) continue;
 
-        const raw = line.slice(5).trim();
+        const raw = trimmed.slice(5).trim();
 
-        if (!raw || raw === "[DONE]") continue;
+        if (raw === "[DONE]") continue;
 
         try {
           const chunk = JSON.parse(raw);
@@ -514,72 +526,203 @@ app.post("/api/chat-stream", async (req, res) => {
             chunk.choices?.[0]?.delta?.content;
 
           if (typeof text === "string" && text) {
-            res.write(
-              `data: ${JSON.stringify({
-                type: "text",
-                text
-              })}\n\n`
-            );
+            sendEvent("token", { text });
           }
-        } catch {
-          // Bỏ qua chunk chưa hoàn chỉnh.
+        } catch (error) {
+          // Bỏ qua dòng dữ liệu chưa hoàn chỉnh.
         }
       }
     }
 
-    res.write(
-      `data: ${JSON.stringify({
-        type: "done",
-        currentDateTime,
-        sources: []
-      })}\n\n`
-    );
-
-    res.end();
-
-  } catch (error) {
-    if (!res.headersSent) {
-      const status =
-        error.name === "AbortError" ? 504 : 500;
-
-      return res.status(status).json({
-        error: "Streaming error",
-        details:
-          error.name === "AbortError"
-            ? "Groq chưa phản hồi trong thời gian cho phép."
-            : error.message || "Unknown error"
+    if (!clientClosed) {
+      sendEvent("done", {
+        mode,
+        model: "dkb.flash.lite",
+        providerModel: model,
+        searched: false,
+        currentDateTime: getVietnamTime()
       });
-    }
-
-    if (!res.writableEnded) {
-      res.write(
-        `data: ${JSON.stringify({
-          type: "error",
-          message:
-            error.message || "Kết nối bị gián đoạn."
-        })}\n\n`
-      );
 
       res.end();
     }
 
-  } finally {
-    clearTimeout(timeout);
+  } catch (error) {
+    console.error("STREAM ERROR:", error);
+
+    sendEvent("error", {
+      error: error.message || "Lỗi kết nối DKB AI."
+    });
+
+    if (!res.destroyed) {
+      res.end();
+    }
   }
 });
 
+// ==============================
+// CHUYỂN GIỌNG NÓI THÀNH VĂN BẢN
+// ==============================
+
+app.post("/api/transcribe", async (req, res) => {
+  try {
+    if (!API_KEY) {
+      throw new Error(
+        "GROQ_API_KEY chưa được cấu hình trên Render."
+      );
+    }
+
+    const {
+      audioBase64,
+      mimeType,
+      language
+    } = req.body || {};
+
+    if (
+      typeof audioBase64 !== "string" ||
+      !audioBase64
+    ) {
+      throw new Error("Không tìm thấy dữ liệu âm thanh.");
+    }
+
+    const audioBuffer = Buffer.from(
+      audioBase64,
+      "base64"
+    );
+
+    if (!audioBuffer.length) {
+      throw new Error("Tệp âm thanh không hợp lệ.");
+    }
+
+    if (audioBuffer.length > 24 * 1024 * 1024) {
+      throw new Error("Âm thanh vượt quá giới hạn 24MB.");
+    }
+
+    const allowedTypes = [
+      "audio/webm",
+      "audio/mp4",
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/wav",
+      "audio/x-wav",
+      "audio/ogg",
+      "audio/m4a"
+    ];
+
+    const safeMimeType = String(
+      mimeType || "audio/webm"
+    ).split(";")[0].toLowerCase();
+
+    if (!allowedTypes.includes(safeMimeType)) {
+      throw new Error("Định dạng âm thanh không được hỗ trợ.");
+    }
+
+    const extensionMap = {
+      "audio/webm": "webm",
+      "audio/mp4": "mp4",
+      "audio/mpeg": "mp3",
+      "audio/mp3": "mp3",
+      "audio/wav": "wav",
+      "audio/x-wav": "wav",
+      "audio/ogg": "ogg",
+      "audio/m4a": "m4a"
+    };
+
+    const extension =
+      extensionMap[safeMimeType] || "webm";
+
+    const audioBlob = new Blob(
+      [audioBuffer],
+      { type: safeMimeType }
+    );
+
+    const form = new FormData();
+
+    form.append(
+      "file",
+      audioBlob,
+      `recording.${extension}`
+    );
+
+    form.append(
+      "model",
+      "whisper-large-v3-turbo"
+    );
+
+    form.append("response_format", "json");
+
+    if (language) {
+      form.append("language", String(language));
+    }
+
+    const response = await groqRequest(AUDIO_URL, {
+      method: "POST",
+      body: form
+    });
+
+    const data = await readResponse(response);
+
+    res.json({
+      text: data.text || "",
+      language: data.language || language || null
+    });
+
+  } catch (error) {
+    console.error("TRANSCRIBE ERROR:", error);
+
+    res.status(500).json({
+      error: error.message || "Không thể nhận diện giọng nói."
+    });
+  }
+});
+
+// ==============================
+// TRANG CHỦ
+// ==============================
+
+app.get("/", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "public", "index.html")
+  );
+});
+
+// ==============================
 // API KHÔNG TỒN TẠI
+// ==============================
+
 app.use("/api", (req, res) => {
   res.status(404).json({
-    error: "API endpoint not found"
+    error: "API không tồn tại.",
+    path: req.originalUrl
   });
 });
 
-// KHỞI ĐỘNG
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("DKB AI server is running");
-  console.log("Provider: Groq API");
-  console.log("Model: " + MODEL);
-  console.log("Web Search: Browser Search");
-  console.log("Vietnam time: " + getVietnamDateTime());
+// ==============================
+// LỖI SERVER
+// ==============================
+
+app.use((error, req, res, next) => {
+  console.error("SERVER ERROR:", error);
+
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  res.status(500).json({
+    error: "Lỗi máy chủ DKB AI."
+  });
+});
+
+// ==============================
+// KHỞI ĐỘNG SERVER
+// ==============================
+
+app.listen(PORT, () => {
+  console.log("--------------------------------");
+  console.log("DKB AI SERVER STARTED");
+  console.log("Port:", PORT);
+  console.log("Model:", MODEL);
+  console.log("Vision:", VISION_MODEL);
+  console.log("API Key:", API_KEY ? "CONFIGURED" : "MISSING");
+  console.log("Vietnam time:", getVietnamTime());
+  console.log("--------------------------------");
 });
