@@ -183,7 +183,7 @@ function getRequestBody(
       }
     ];
 
-    body.tool_choice = "required";
+    body.tool_choice = "auto";
   }
 
   return body;
