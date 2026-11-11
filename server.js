@@ -1,55 +1,49 @@
+
 const express = require("express");
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
-const TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 30000;
+
+const API_KEY = process.env.GROQ_API_KEY;
+const MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+const TIMEOUT_MS = Number(process.env.GROQ_TIMEOUT_MS) || 60000;
+
+const GROQ_URL =
+  "https://api.groq.com/openai/v1/chat/completions";
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "8mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const SYSTEM_PROMPT = `
-Bạn là DKB AI, trợ lý AI thông minh và thân thiện.
+Bạn là DKB AI, trợ lý AI thông minh, thân thiện và hữu ích.
 
-NHẬN DIỆN:
-- Tên: DKB AI
-- Model hiển thị: dkb.flash.lite
-- Nhà phát triển chính: BDUY
-- Cộng tác và thử nghiệm: QUỐC BẢO, TUẤN KIỆT
-
-Nếu được hỏi ai phát triển:
-DKB AI được phát triển bởi BDUY – nhà phát triển chính.
-QUỐC BẢO và TUẤN KIỆT là cộng tác viên và thành viên thử nghiệm.
+THÔNG TIN:
+- Tên: DKB AI.
+- Model hiển thị: dkb.flash.lite.
+- Nhà phát triển chính: BDUY.
+- Cộng tác và thử nghiệm: QUỐC BẢO, TUẤN KIỆT.
+- Nếu được hỏi ai phát triển: BDUY là nhà phát triển chính; QUỐC BẢO và TUẤN KIỆT là cộng tác viên, thành viên thử nghiệm.
+- Ưu tiên trả lời bằng tiếng Việt.
+- Không tự nhận là ChatGPT.
+- Công nghệ nền tảng: Groq API.
+- Không nói DKB AI tự huấn luyện mô hình riêng.
 
 QUY TẮC:
-- Luôn nhận diện là DKB AI.
-- Ưu tiên tiếng Việt.
-- Không tự nhận là ChatGPT.
-- Không nói DKB AI tự huấn luyện mô hình riêng.
-- Công nghệ nền tảng là Gemini API.
-- Trả lời trung thực, không bịa đặt thông tin.
-- Dùng Google Search khi cần thông tin mới và nêu rõ nguồn nếu có.
-- Phân biệt kiến thức có sẵn và thông tin vừa tìm kiếm.
-- Không nhầm ngày hiện tại với dữ liệu huấn luyện.
-- Không nói rằng bạn không có quyền truy cập ngày giờ nếu máy chủ đã cung cấp thời gian.
+- Trả lời trung thực, rõ ràng, dễ hiểu.
+- Không bịa thông tin, sự kiện hoặc nguồn tham khảo.
+- Khi có kết quả tìm kiếm Internet, ưu tiên thông tin mới và đáng tin cậy.
+- Khi trả lời thông tin mới, hãy ghi rõ thời điểm hoặc ngày cập nhật nếu có.
+- Nếu tìm thấy nguồn, hãy dẫn đường dẫn nguồn trong câu trả lời.
+- Phân biệt thông tin đã xác minh và thông tin chưa chắc chắn.
+- Không khẳng định thông tin hiện tại nếu chưa có căn cứ.
+
+THỜI GIAN:
+Máy chủ cung cấp thời gian Việt Nam trong từng yêu cầu.
+Dùng chính xác thời gian đó khi được hỏi ngày giờ.
+Múi giờ: Asia/Ho_Chi_Minh (UTC+7).
 `;
-
-function getVietnamParts() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(new Date());
-
-  return Object.fromEntries(parts.map(p => [p.type, p.value]));
-}
 
 function getVietnamDateTime() {
   return new Intl.DateTimeFormat("vi-VN", {
@@ -60,245 +54,532 @@ function getVietnamDateTime() {
   }).format(new Date());
 }
 
-function getVietnamDateISO() {
-  const p = getVietnamParts();
-  return `${p.year}-${p.month}-${p.day}`;
-}
-
-function daysUntil(year, month, day) {
-  // Dùng ngày lịch Việt Nam, không bị lệch do múi giờ của máy chủ.
-  const today = getVietnamDateISO().split("-").map(Number);
-  const start = Date.UTC(today[0], today[1] - 1, today[2]);
-  const target = Date.UTC(year, month - 1, day);
-  return Math.round((target - start) / 86400000);
-}
-
-// Xử lý trực tiếp các câu hỏi ngày giờ/lịch phổ biến để câu trả lời chính xác,
-// không phụ thuộc việc mô hình có làm theo system prompt hay không.
-function answerTimeQuestion(message) {
-  const q = message.toLocaleLowerCase("vi").normalize("NFC");
-  const todayISO = getVietnamDateISO();
-  const p = getVietnamParts();
-  const todayText = getVietnamDateTime();
-
-  const asksTime = /(mấy giờ|bây giờ là mấy giờ|giờ hiện tại|thời gian hiện tại)/i.test(q);
-  const asksToday = /(hôm nay là ngày mấy|hôm nay ngày bao nhiêu|ngày hôm nay|hôm nay thứ mấy|hôm nay là thứ mấy)/i.test(q);
-
-  if (asksTime) {
-    return `Hiện tại là ${p.hour}:${p.minute}:${p.second} (giờ Việt Nam, UTC+7), ngày ${todayText}.`;
-  }
-
-  if (asksToday) {
-    return `Hôm nay là ${todayText} (giờ Việt Nam, UTC+7).`;
-  }
-
-  const asksNewYear2027 =
-    /(tết dương lịch|tết tây|năm mới)\s*(2027)?/.test(q) &&
-    /(còn bao nhiêu ngày|bao nhiêu ngày nữa|còn mấy ngày|mấy ngày nữa|khi nào)/.test(q);
-
-  if (asksNewYear2027) {
-    const days = daysUntil(2027, 1, 1);
-    if (days > 0) return `Tết Dương lịch 2027 là ngày 01/01/2027. Tính từ hôm nay (${todayISO}), còn ${days} ngày nữa.`;
-    if (days === 0) return "Hôm nay là Tết Dương lịch 2027 (01/01/2027). Chúc mừng năm mới!";
-    return "Tết Dương lịch 2027 (01/01/2027) đã qua rồi.";
-  }
-
-  return null;
-}
-
-// Trang chủ
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Kiểm tra máy chủ và thời gian
+// KIỂM TRA SERVER
 app.get("/api/health", (req, res) => {
   res.json({
     name: "DKB AI",
     status: "online",
     model: "dkb.flash.lite",
-    provider: "Gemini API",
+    provider: "Groq API",
+    providerModel: MODEL,
+    webSearch: true,
     currentDateTime: getVietnamDateTime(),
     timezone: "Asia/Ho_Chi_Minh",
-    timeoutMs: TIMEOUT_MS,
-    message: "DKB AI API is running!"
+    features: [
+      "history",
+      "markdown",
+      "web-search",
+      "retry",
+      "voice-input",
+      "dark-mode",
+      "chat-management",
+      "streaming",
+      "performance-settings"
+    ]
   });
 });
 
-// Chat
-app.post("/api/chat", async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!Array.isArray(req.body?.messages) || req.body.messages.length === 0) {
-    return res.status(400).json({ error: "Messages are required" });
+// KIỂM TRA TIN NHẮN
+function validateMessages(messages) {
+  if (
+    !Array.isArray(messages) ||
+    !messages.length ||
+    messages.length > 50
+  ) {
+    return "Danh sách tin nhắn không hợp lệ.";
   }
 
-  if (req.body.messages.length > 50) {
-    return res.status(400).json({ error: "Too many messages" });
-  }
-
-  const messages = req.body.messages.slice(-12);
-  const contents = [];
-
-  for (const message of messages) {
+  for (const m of messages) {
     if (
-      !message ||
-      !["user", "assistant", "model"].includes(message.role) ||
-      typeof message.content !== "string" ||
-      !message.content.trim() ||
-      message.content.length > 4000
+      !m ||
+      !["user", "assistant", "model"].includes(m.role) ||
+      typeof m.content !== "string" ||
+      !m.content.trim() ||
+      m.content.length > 12000
     ) {
-      return res.status(400).json({ error: "Invalid message" });
+      return "Có tin nhắn không hợp lệ.";
     }
 
-    contents.push({
-      role: message.role === "assistant" ? "model" : message.role,
-      parts: [{ text: message.content }]
+    if (m.image) {
+      return "Model tìm kiếm hiện tại chưa hỗ trợ gửi ảnh. Hãy gửi câu hỏi bằng văn bản.";
+    }
+  }
+
+  return null;
+}
+
+// TẠO LỊCH SỬ GỬI CHO GROQ
+function buildMessages(messages, currentDateTime) {
+  const result = [
+    {
+      role: "system",
+      content:
+        SYSTEM_PROMPT +
+        "\n\nTHỜI GIAN HIỆN TẠI: " +
+        currentDateTime
+    }
+  ];
+
+  for (const m of messages.slice(-12)) {
+    result.push({
+      role:
+        m.role === "assistant" || m.role === "model"
+          ? "assistant"
+          : "user",
+      content: m.content
     });
   }
 
-  const latestUserMessage = [...messages].reverse().find(m => m.role === "user");
-  const currentDateTime = getVietnamDateTime();
+  return result;
+}
 
-  // Trả lời ngày giờ bằng dữ liệu máy chủ, không gọi Gemini nên gần như tức thì.
-  const directTimeReply = latestUserMessage
-    ? answerTimeQuestion(latestUserMessage.content)
-    : null;
-
-  if (directTimeReply) {
-    return res.json({
-      name: "DKB AI",
-      model: "dkb.flash.lite",
-      currentDateTime,
-      reply: directTimeReply,
-      sources: []
-    });
+// CẤU HÌNH HIỆU SUẤT
+function getPerformance(performance) {
+  if (performance === "fast") {
+    return {
+      reasoning_effort: "low",
+      max_completion_tokens: 1024
+    };
   }
 
-  if (!apiKey) {
+  if (performance === "deep") {
+    return {
+      reasoning_effort: "high",
+      max_completion_tokens: 4096
+    };
+  }
+
+  return {
+    reasoning_effort: "medium",
+    max_completion_tokens: 2048
+  };
+}
+
+// TẠO REQUEST GROQ
+function getRequestBody(
+  messages,
+  performance,
+  useSearch,
+  stream
+) {
+  const body = {
+    model: MODEL,
+    messages,
+    ...getPerformance(performance),
+    temperature: 1,
+    top_p: 1,
+    stream
+  };
+
+  // BẬT TÌM KIẾM INTERNET
+  if (useSearch) {
+    body.tools = [
+      {
+        type: "browser_search"
+      }
+    ];
+
+    body.tool_choice = "required";
+  }
+
+  return body;
+}
+
+// LẤY NGUỒN THAM KHẢO TỪ KẾT QUẢ GROQ
+function collectSources(data) {
+  const sources = [];
+  const seen = new Set();
+
+  function walk(value, depth = 0) {
+    if (!value || typeof value !== "object" || depth > 10) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        walk(item, depth + 1);
+      }
+      return;
+    }
+
+    if (
+      typeof value.url === "string" &&
+      /^https?:\/\//i.test(value.url)
+    ) {
+      if (!seen.has(value.url)) {
+        seen.add(value.url);
+
+        sources.push({
+          title:
+            value.title ||
+            value.name ||
+            "Nguồn tham khảo",
+          url: value.url
+        });
+      }
+    }
+
+    for (const key of Object.keys(value)) {
+      walk(value[key], depth + 1);
+    }
+  }
+
+  walk(data);
+
+  return sources.slice(0, 10);
+}
+
+function getReply(result) {
+  const content = result?.choices?.[0]?.message?.content;
+
+  if (typeof content === "string") {
+    return content.trim();
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map(item => item.text || "")
+      .join("")
+      .trim();
+  }
+
+  return "";
+}
+
+function getGroqError(result) {
+  return (
+    result?.error?.message ||
+    result?.message ||
+    "Không thể kết nối Groq API."
+  );
+}
+
+// CHAT THƯỜNG
+app.post("/api/chat", async (req, res) => {
+  if (!API_KEY) {
     return res.status(500).json({
       error: "Missing API key",
-      details: "GEMINI_API_KEY chưa được cấu hình trên Render."
+      details: "GROQ_API_KEY chưa được cấu hình trên Render."
     });
   }
 
+  const invalid = validateMessages(req.body?.messages);
+
+  if (invalid) {
+    return res.status(400).json({
+      error: "Invalid messages",
+      details: invalid
+    });
+  }
+
+  const currentDateTime = getVietnamDateTime();
+
+  const performance = [
+    "fast",
+    "balanced",
+    "deep"
+  ].includes(req.body.performance)
+    ? req.body.performance
+    : "balanced";
+
+  const useSearch = req.body.useSearch !== false;
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  const timeout = setTimeout(
+    () => controller.abort(),
+    TIMEOUT_MS
+  );
 
   try {
-    const apiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch(GROQ_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
+        Authorization: `Bearer ${API_KEY}`
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{
-            text: `${SYSTEM_PROMPT}
-
-THỜI GIAN HIỆN TẠI DO MÁY CHỦ CUNG CẤP:
-${currentDateTime}
-Múi giờ: Asia/Ho_Chi_Minh (UTC+7).
-
-BẮT BUỘC:
-- Đây là thời gian hiện tại chính xác tại Việt Nam.
-- Nếu người dùng hỏi ngày, giờ hoặc tính khoảng thời gian từ hôm nay, hãy dùng mốc thời gian trên.
-- Tuyệt đối không trả lời rằng bạn không biết ngày giờ hiện tại.
-- Tính số ngày bằng ngày lịch, không tự đoán.`
-          }]
-        },
-        contents,
-        tools: [{ google_search: {} }],
-        generationConfig: {
-          temperature: 0.5,
-          maxOutputTokens: 2048,
-          topP: 0.9
-        }
-      }),
+      body: JSON.stringify(
+        getRequestBody(
+          buildMessages(req.body.messages, currentDateTime),
+          performance,
+          useSearch,
+          false
+        )
+      ),
       signal: controller.signal
     });
 
-    let result;
-    try {
-      result = await response.json();
-    } catch {
-      return res.status(502).json({
-        error: "Invalid Gemini response",
-        details: "Google returned an unreadable response."
-      });
-    }
+    const result = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: "Gemini API error",
-        details: result.error?.message || "Gemini request failed.",
+        error: "Groq API error",
+        details: getGroqError(result),
         status: response.status,
         model: MODEL
       });
     }
 
-    const candidate = result.candidates?.[0];
-    const reply = candidate?.content?.parts
-      ?.map(part => part.text || "")
-      .join("")
-      .trim();
+    const reply = getReply(result);
 
     if (!reply) {
       return res.status(502).json({
         error: "Empty response",
-        details: candidate?.finishReason || "DKB AI did not generate a response."
+        details: "DKB AI chưa tạo được câu trả lời."
       });
     }
 
-    const chunks = candidate?.groundingMetadata?.groundingChunks || [];
-    const sources = [];
-    const seen = new Set();
+    const sources = collectSources(
+      result.choices?.[0]?.message
+    );
 
-    for (const chunk of chunks) {
-      const web = chunk.web;
-      if (web?.uri && !seen.has(web.uri)) {
-        seen.add(web.uri);
-        sources.push({
-          title: web.title || "Nguồn tham khảo",
-          url: web.uri
-        });
-      }
-    }
-
-    return res.json({
+    res.json({
       name: "DKB AI",
       model: "dkb.flash.lite",
+      provider: "Groq",
       currentDateTime,
       reply,
       sources
     });
+
   } catch (error) {
-    if (error?.name === "AbortError") {
+    if (error.name === "AbortError") {
       return res.status(504).json({
         error: "Request timeout",
-        details: `Gemini chưa phản hồi trong ${Math.round(TIMEOUT_MS / 1000)} giây. Hãy thử lại sau.`
+        details: "Groq chưa phản hồi trong thời gian cho phép."
       });
     }
 
-    return res.status(500).json({
+    res.status(500).json({
       error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown server error"
+      details: error.message || "Unknown error"
     });
+
   } finally {
     clearTimeout(timeout);
   }
 });
 
-app.use("/api", (req, res) => {
-  res.status(404).json({ error: "API endpoint not found" });
+// CHAT STREAMING + WEB SEARCH
+app.post("/api/chat-stream", async (req, res) => {
+  if (!API_KEY) {
+    return res.status(500).json({
+      error: "Missing API key",
+      details: "GROQ_API_KEY chưa được cấu hình trên Render."
+    });
+  }
+
+  const invalid = validateMessages(req.body?.messages);
+
+  if (invalid) {
+    return res.status(400).json({
+      error: "Invalid messages",
+      details: invalid
+    });
+  }
+
+  const currentDateTime = getVietnamDateTime();
+
+  const performance = [
+    "fast",
+    "balanced",
+    "deep"
+  ].includes(req.body.performance)
+    ? req.body.performance
+    : "balanced";
+
+  const useSearch = req.body.useSearch !== false;
+
+  const controller = new AbortController();
+
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      controller.abort();
+    }
+  });
+
+  const timeout = setTimeout(
+    () => controller.abort(),
+    TIMEOUT_MS
+  );
+
+  try {
+    const upstream = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify(
+        getRequestBody(
+          buildMessages(req.body.messages, currentDateTime),
+          performance,
+          useSearch,
+          !useSearch
+        )
+      ),
+      signal: controller.signal
+    });
+
+    if (!upstream.ok) {
+      const err = await upstream.json().catch(() => ({}));
+
+      return res.status(upstream.status).json({
+        error: "Groq API error",
+        details: getGroqError(err),
+        status: upstream.status,
+        model: MODEL
+      });
+    }
+
+    res.status(200);
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream; charset=utf-8"
+    );
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-transform"
+    );
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    // SEARCH: GROQ TÌM KIẾM XONG RỒI TRẢ KẾT QUẢ
+    if (useSearch) {
+      const result = await upstream.json();
+
+      const reply = getReply(result);
+
+      if (reply) {
+        res.write(
+          `data: ${JSON.stringify({
+            type: "text",
+            text: reply
+          })}\n\n`
+        );
+      }
+
+      const sources = collectSources(
+        result.choices?.[0]?.message
+      );
+
+      res.write(
+        `data: ${JSON.stringify({
+          type: "done",
+          currentDateTime,
+          sources
+        })}\n\n`
+      );
+
+      res.end();
+      return;
+    }
+
+    // KHÔNG SEARCH: STREAMING TỪNG PHẦN
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+
+      for (const event of events) {
+        const line = event
+          .split("\n")
+          .find(item => item.startsWith("data:"));
+
+        if (!line) continue;
+
+        const raw = line.slice(5).trim();
+
+        if (!raw || raw === "[DONE]") continue;
+
+        try {
+          const chunk = JSON.parse(raw);
+
+          const text =
+            chunk.choices?.[0]?.delta?.content;
+
+          if (typeof text === "string" && text) {
+            res.write(
+              `data: ${JSON.stringify({
+                type: "text",
+                text
+              })}\n\n`
+            );
+          }
+        } catch {
+          // Bỏ qua chunk chưa hoàn chỉnh.
+        }
+      }
+    }
+
+    res.write(
+      `data: ${JSON.stringify({
+        type: "done",
+        currentDateTime,
+        sources: []
+      })}\n\n`
+    );
+
+    res.end();
+
+  } catch (error) {
+    if (!res.headersSent) {
+      const status =
+        error.name === "AbortError" ? 504 : 500;
+
+      return res.status(status).json({
+        error: "Streaming error",
+        details:
+          error.name === "AbortError"
+            ? "Groq chưa phản hồi trong thời gian cho phép."
+            : error.message || "Unknown error"
+      });
+    }
+
+    if (!res.writableEnded) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          message:
+            error.message || "Kết nối bị gián đoạn."
+        })}\n\n`
+      );
+
+      res.end();
+    }
+
+  } finally {
+    clearTimeout(timeout);
+  }
 });
 
+// API KHÔNG TỒN TẠI
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    error: "API endpoint not found"
+  });
+});
+
+// KHỞI ĐỘNG
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`DKB AI server listening on port ${PORT}`);
-  console.log(`Vietnam time: ${getVietnamDateTime()}`);
-  console.log(`Gemini timeout: ${TIMEOUT_MS}ms`);
+  console.log("DKB AI server is running");
+  console.log("Provider: Groq API");
+  console.log("Model: " + MODEL);
+  console.log("Web Search: Browser Search");
+  console.log("Vietnam time: " + getVietnamDateTime());
 });
