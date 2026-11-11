@@ -12,6 +12,7 @@ const VISION_MODEL =
 
 const GROQ_URL =
   "https://api.groq.com/openai/v1/chat/completions";
+
 const AUDIO_URL =
   "https://api.groq.com/openai/v1/audio/transcriptions";
 
@@ -21,9 +22,9 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "30mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ==============================
+// =====================================
 // THỜI GIAN VIỆT NAM
-// ==============================
+// =====================================
 
 function getVietnamTime() {
   return new Intl.DateTimeFormat("vi-VN", {
@@ -33,15 +34,15 @@ function getVietnamTime() {
   }).format(new Date());
 }
 
-// ==============================
+// =====================================
 // SYSTEM PROMPT
-// ==============================
+// =====================================
 
 function systemPrompt() {
   return `
 Bạn là DKB AI, trợ lý AI trên website DKB AI.
 
-Quy tắc:
+QUY TẮC:
 - Trả lời bằng tiếng Việt khi người dùng sử dụng tiếng Việt.
 - Trả lời chính xác, rõ ràng, dễ hiểu.
 - Không tự bịa thông tin hoặc nguồn tham khảo.
@@ -55,25 +56,27 @@ Quy tắc:
 `;
 }
 
-// ==============================
-// CHẾ ĐỘ LITE / MAX
-// ==============================
+// =====================================
+// LITE / MAX
+// =====================================
 
-function getMode(body) {
-  return String(
+function getMode(body = {}) {
+  const mode = String(
     body.thinkingMode ||
     body.mode ||
     body.performance ||
     "lite"
-  ).toLowerCase() === "max" ? "max" : "lite";
+  ).toLowerCase();
+
+  return mode === "max" ? "max" : "lite";
 }
 
-// ==============================
-// KIỂM TRA TIN NHẮN
-// ==============================
+// =====================================
+// CHUẨN HÓA TIN NHẮN
+// =====================================
 
 function validateMessages(messages) {
-  if (!Array.isArray(messages) || !messages.length) {
+  if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error("Tin nhắn không hợp lệ.");
   }
 
@@ -81,82 +84,128 @@ function validateMessages(messages) {
     throw new Error("Quá nhiều tin nhắn.");
   }
 
-  return messages.map(message => {
+  return messages.map((message, index) => {
     if (
       !message ||
       !["user", "assistant"].includes(message.role)
     ) {
-      throw new Error("Vai trò tin nhắn không hợp lệ.");
+      throw new Error(
+        `Vai trò tin nhắn ${index + 1} không hợp lệ.`
+      );
     }
 
-    if (typeof message.content === "string") {
-      if (message.content.length > 30000) {
+    const content = message.content;
+
+    // Văn bản thông thường
+    if (typeof content === "string") {
+      if (content.length > 30000) {
         throw new Error("Tin nhắn quá dài.");
       }
 
       return {
         role: message.role,
-        content: message.content
+        content
       };
     }
 
-    if (!Array.isArray(message.content)) {
-      throw new Error("Nội dung không hợp lệ.");
-    }
+    // Nội dung đa phương thức
+    if (Array.isArray(content)) {
+      const parts = [];
 
-    for (const item of message.content) {
-      if (item.type === "text") {
-        if (typeof item.text !== "string") {
-          throw new Error("Văn bản không hợp lệ.");
+      for (const item of content) {
+        if (!item || typeof item !== "object") {
+          continue;
         }
-      } else if (item.type === "image_url") {
-        const url = item.image_url?.url;
 
         if (
-          typeof url !== "string" ||
-          !/^(https?:\/\/|data:image\/)/i.test(url)
+          item.type === "text" &&
+          typeof item.text === "string"
         ) {
-          throw new Error("Ảnh không hợp lệ.");
+          parts.push({
+            type: "text",
+            text: item.text.slice(0, 30000)
+          });
+
+          continue;
         }
-      } else {
-        throw new Error("Loại nội dung không hỗ trợ.");
+
+        if (item.type === "image_url") {
+          const imageUrl =
+            typeof item.image_url === "string"
+              ? item.image_url
+              : item.image_url?.url;
+
+          if (
+            typeof imageUrl !== "string" ||
+            !/^(https?:\/\/|data:image\/)/i.test(imageUrl)
+          ) {
+            throw new Error(
+              `Ảnh trong tin nhắn ${index + 1} không hợp lệ.`
+            );
+          }
+
+          parts.push({
+            type: "image_url",
+            image_url: {
+              url: imageUrl
+            }
+          });
+        }
       }
+
+      if (parts.length === 0) {
+        throw new Error(
+          `Tin nhắn ${index + 1} không có nội dung hợp lệ.`
+        );
+      }
+
+      return {
+        role: message.role,
+        content: parts
+      };
     }
 
-    return {
-      role: message.role,
-      content: message.content
-    };
+    throw new Error(
+      `Nội dung tin nhắn ${index + 1} không hợp lệ.`
+    );
   });
 }
 
-// ==============================
+// =====================================
 // KIỂM TRA ẢNH
-// ==============================
+// =====================================
 
 function containsImage(messages) {
-  const last = [...messages]
-    .reverse()
-    .find(message => message.role === "user");
+  return messages.some(message => {
+    if (!Array.isArray(message.content)) {
+      return false;
+    }
 
-  return Boolean(
-    last &&
-    Array.isArray(last.content) &&
-    last.content.some(item => item.type === "image_url")
-  );
+    return message.content.some(
+      item => item.type === "image_url"
+    );
+  });
 }
 
-// ==============================
+// =====================================
 // TẠO REQUEST
-// ==============================
+// =====================================
 
-function buildRequest(body, stream = false) {
+function buildRequest(body = {}, stream = false) {
   const messages = validateMessages(body.messages);
+
   const mode = getMode(body);
   const hasImage = containsImage(messages);
-  const useSearch = body.useSearch === true && !hasImage;
 
-  const model = hasImage ? VISION_MODEL : MODEL;
+  // Tìm kiếm web không dùng chung với ảnh
+  const useSearch =
+    body.useSearch === true && !hasImage;
+
+  const model = hasImage
+    ? VISION_MODEL
+    : MODEL;
+
+  const selectedMessages = messages.slice(-16);
 
   const payload = {
     model,
@@ -165,10 +214,11 @@ function buildRequest(body, stream = false) {
         role: "system",
         content: systemPrompt()
       },
-      ...messages.slice(-16)
+      ...selectedMessages
     ],
     temperature: 0.6,
-    max_completion_tokens: mode === "max" ? 8192 : 4096,
+    max_completion_tokens:
+      mode === "max" ? 8192 : 4096,
     stream
   };
 
@@ -182,8 +232,11 @@ function buildRequest(body, stream = false) {
 
   if (useSearch) {
     payload.tools = [
-      { type: "browser_search" }
+      {
+        type: "browser_search"
+      }
     ];
+
     payload.tool_choice = "auto";
   }
 
@@ -191,13 +244,14 @@ function buildRequest(body, stream = false) {
     payload,
     mode,
     model,
-    useSearch
+    useSearch,
+    hasImage
   };
 }
 
-// ==============================
-// GỌI GROQ API
-// ==============================
+// =====================================
+// GỌI GROQ
+// =====================================
 
 async function groqRequest(url, options = {}) {
   if (!API_KEY) {
@@ -208,10 +262,9 @@ async function groqRequest(url, options = {}) {
 
   const controller = new AbortController();
 
-  const timeout = setTimeout(
-    () => controller.abort(),
-    TIMEOUT
-  );
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, TIMEOUT);
 
   try {
     return await fetch(url, {
@@ -224,7 +277,9 @@ async function groqRequest(url, options = {}) {
     });
   } catch (error) {
     if (error.name === "AbortError") {
-      throw new Error("Yêu cầu hết thời gian chờ.");
+      throw new Error(
+        "Yêu cầu hết thời gian chờ. Hãy thử lại."
+      );
     }
 
     throw error;
@@ -233,9 +288,9 @@ async function groqRequest(url, options = {}) {
   }
 }
 
-// ==============================
-// ĐỌC PHẢN HỒI API
-// ==============================
+// =====================================
+// ĐỌC PHẢN HỒI
+// =====================================
 
 async function readResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -250,8 +305,13 @@ async function readResponse(response) {
   return data;
 }
 
+// =====================================
+// LẤY NỘI DUNG AI
+// =====================================
+
 function extractReply(data) {
-  const content = data?.choices?.[0]?.message?.content;
+  const content =
+    data?.choices?.[0]?.message?.content;
 
   if (typeof content === "string") {
     return content;
@@ -259,16 +319,20 @@ function extractReply(data) {
 
   if (Array.isArray(content)) {
     return content
-      .map(item => item.text || "")
+      .map(item => {
+        return typeof item.text === "string"
+          ? item.text
+          : "";
+      })
       .join("");
   }
 
   return "";
 }
 
-// ==============================
+// =====================================
 // LẤY NGUỒN THAM KHẢO
-// ==============================
+// =====================================
 
 function collectSources(data) {
   const sources = new Map();
@@ -319,9 +383,9 @@ function collectSources(data) {
   return [...sources.values()].slice(0, 15);
 }
 
-// ==============================
+// =====================================
 // HEALTH CHECK
-// ==============================
+// =====================================
 
 app.get("/api/health", (req, res) => {
   res.json({
@@ -341,9 +405,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ==============================
+// =====================================
 // CHAT THÔNG THƯỜNG
-// ==============================
+// =====================================
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -351,7 +415,8 @@ app.post("/api/chat", async (req, res) => {
       payload,
       mode,
       model,
-      useSearch
+      useSearch,
+      hasImage
     } = buildRequest(req.body, false);
 
     const response = await groqRequest(GROQ_URL, {
@@ -363,7 +428,6 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const data = await readResponse(response);
-
     const reply = extractReply(data);
 
     if (!reply) {
@@ -379,6 +443,7 @@ app.post("/api/chat", async (req, res) => {
       model: "dkb.flash.lite",
       providerModel: model,
       searched: useSearch,
+      analyzedImage: hasImage,
       currentDateTime: getVietnamTime()
     });
 
@@ -386,14 +451,15 @@ app.post("/api/chat", async (req, res) => {
     console.error("CHAT ERROR:", error);
 
     res.status(500).json({
-      error: error.message || "Không thể kết nối DKB AI."
+      error: error.message ||
+        "Không thể kết nối DKB AI."
     });
   }
 });
 
-// ==============================
-// CHAT STREAMING - SSE
-// ==============================
+// =====================================
+// STREAMING SSE
+// =====================================
 
 app.post("/api/chat-stream", async (req, res) => {
   let reader = null;
@@ -424,14 +490,23 @@ app.post("/api/chat-stream", async (req, res) => {
     } = buildRequest(req.body, true);
 
     res.status(200);
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
+
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream; charset=utf-8"
+    );
+
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-transform"
+    );
+
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
+
     res.flushHeaders?.();
 
-    // Khi bật tìm kiếm, dùng phản hồi đầy đủ
-    // để nhận nội dung và dữ liệu nguồn.
+    // TÌM KIẾM WEB
     if (useSearch) {
       const response = await groqRequest(GROQ_URL, {
         method: "POST",
@@ -448,10 +523,14 @@ app.post("/api/chat-stream", async (req, res) => {
       const reply = extractReply(data);
 
       if (!reply) {
-        throw new Error("AI không trả về nội dung.");
+        throw new Error(
+          "AI không trả về nội dung."
+        );
       }
 
-      sendEvent("token", { text: reply });
+      sendEvent("token", {
+        text: reply
+      });
 
       sendEvent("sources", {
         sources: collectSources(data)
@@ -468,7 +547,7 @@ app.post("/api/chat-stream", async (req, res) => {
       return res.end();
     }
 
-    // Streaming thông thường
+    // STREAMING THÔNG THƯỜNG
     const response = await groqRequest(GROQ_URL, {
       method: "POST",
       headers: {
@@ -490,7 +569,9 @@ app.post("/api/chat-stream", async (req, res) => {
     }
 
     if (!response.body) {
-      throw new Error("Không nhận được dữ liệu streaming.");
+      throw new Error(
+        "Không nhận được dữ liệu streaming."
+      );
     }
 
     reader = response.body.getReader();
@@ -508,28 +589,50 @@ app.post("/api/chat-stream", async (req, res) => {
       });
 
       const lines = buffer.split("\n");
+
       buffer = lines.pop() || "";
 
       for (const line of lines) {
         const trimmed = line.trim();
 
-        if (!trimmed.startsWith("data:")) continue;
+        if (!trimmed.startsWith("data:")) {
+          continue;
+        }
 
         const raw = trimmed.slice(5).trim();
 
-        if (raw === "[DONE]") continue;
+        if (raw === "[DONE]") {
+          continue;
+        }
 
         try {
           const chunk = JSON.parse(raw);
 
-          const text =
+          const content =
             chunk.choices?.[0]?.delta?.content;
 
-          if (typeof text === "string" && text) {
-            sendEvent("token", { text });
+          if (typeof content === "string" && content) {
+            sendEvent("token", {
+              text: content
+            });
           }
+
+          // Một số API trả content dạng mảng
+          if (Array.isArray(content)) {
+            for (const part of content) {
+              if (
+                typeof part.text === "string" &&
+                part.text
+              ) {
+                sendEvent("token", {
+                  text: part.text
+                });
+              }
+            }
+          }
+
         } catch (error) {
-          // Bỏ qua dòng dữ liệu chưa hoàn chỉnh.
+          // Bỏ qua chunk không hợp lệ.
         }
       }
     }
@@ -550,7 +653,8 @@ app.post("/api/chat-stream", async (req, res) => {
     console.error("STREAM ERROR:", error);
 
     sendEvent("error", {
-      error: error.message || "Lỗi kết nối DKB AI."
+      error: error.message ||
+        "Lỗi kết nối DKB AI."
     });
 
     if (!res.destroyed) {
@@ -559,9 +663,9 @@ app.post("/api/chat-stream", async (req, res) => {
   }
 });
 
-// ==============================
-// CHUYỂN GIỌNG NÓI THÀNH VĂN BẢN
-// ==============================
+// =====================================
+// NHẬN DIỆN GIỌNG NÓI
+// =====================================
 
 app.post("/api/transcribe", async (req, res) => {
   try {
@@ -581,7 +685,9 @@ app.post("/api/transcribe", async (req, res) => {
       typeof audioBase64 !== "string" ||
       !audioBase64
     ) {
-      throw new Error("Không tìm thấy dữ liệu âm thanh.");
+      throw new Error(
+        "Không tìm thấy dữ liệu âm thanh."
+      );
     }
 
     const audioBuffer = Buffer.from(
@@ -590,11 +696,15 @@ app.post("/api/transcribe", async (req, res) => {
     );
 
     if (!audioBuffer.length) {
-      throw new Error("Tệp âm thanh không hợp lệ.");
+      throw new Error(
+        "Tệp âm thanh không hợp lệ."
+      );
     }
 
     if (audioBuffer.length > 24 * 1024 * 1024) {
-      throw new Error("Âm thanh vượt quá giới hạn 24MB.");
+      throw new Error(
+        "Âm thanh vượt quá giới hạn 24MB."
+      );
     }
 
     const allowedTypes = [
@@ -613,7 +723,9 @@ app.post("/api/transcribe", async (req, res) => {
     ).split(";")[0].toLowerCase();
 
     if (!allowedTypes.includes(safeMimeType)) {
-      throw new Error("Định dạng âm thanh không được hỗ trợ.");
+      throw new Error(
+        "Định dạng âm thanh không được hỗ trợ."
+      );
     }
 
     const extensionMap = {
@@ -670,14 +782,15 @@ app.post("/api/transcribe", async (req, res) => {
     console.error("TRANSCRIBE ERROR:", error);
 
     res.status(500).json({
-      error: error.message || "Không thể nhận diện giọng nói."
+      error: error.message ||
+        "Không thể nhận diện giọng nói."
     });
   }
 });
 
-// ==============================
+// =====================================
 // TRANG CHỦ
-// ==============================
+// =====================================
 
 app.get("/", (req, res) => {
   res.sendFile(
@@ -685,9 +798,9 @@ app.get("/", (req, res) => {
   );
 });
 
-// ==============================
+// =====================================
 // API KHÔNG TỒN TẠI
-// ==============================
+// =====================================
 
 app.use("/api", (req, res) => {
   res.status(404).json({
@@ -696,9 +809,9 @@ app.use("/api", (req, res) => {
   });
 });
 
-// ==============================
+// =====================================
 // LỖI SERVER
-// ==============================
+// =====================================
 
 app.use((error, req, res, next) => {
   console.error("SERVER ERROR:", error);
@@ -712,9 +825,9 @@ app.use((error, req, res, next) => {
   });
 });
 
-// ==============================
-// KHỞI ĐỘNG SERVER
-// ==============================
+// =====================================
+// KHỞI ĐỘNG
+// =====================================
 
 app.listen(PORT, () => {
   console.log("--------------------------------");
@@ -722,7 +835,10 @@ app.listen(PORT, () => {
   console.log("Port:", PORT);
   console.log("Model:", MODEL);
   console.log("Vision:", VISION_MODEL);
-  console.log("API Key:", API_KEY ? "CONFIGURED" : "MISSING");
+  console.log(
+    "API Key:",
+    API_KEY ? "CONFIGURED" : "MISSING"
+  );
   console.log("Vietnam time:", getVietnamTime());
   console.log("--------------------------------");
 });
