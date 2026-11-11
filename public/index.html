@@ -1,202 +1,768 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#ffffff">
-  <title>DKB AI — Trợ lý AI của bạn</title>
-  <meta name="description" content="DKB AI - Trợ lý trí tuệ nhân tạo">
-  <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<title>DKB AI — Trợ lý AI của bạn</title>
+<meta name="description" content="DKB AI - Trợ lý trí tuệ nhân tạo">
+
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
   font-family: Inter, Arial, sans-serif;
   color: #202124;
   background: #fff;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  --bg: #fff;
+  --sidebar: #fafafa;
+  --surface: #fff;
+  --soft: #f5f6f7;
+  --ink: #202124;
   --muted: #858993;
   --line: #eceef1;
-  --soft: #f7f8fa;
-  --ink: #17191d;
+  --border: #e5e7eb;
+  --assistant: #343740;
+  --user-bubble: #f1f2f4;
+  --code-bg: #17191f;
+  --code-text: #e8eaf0;
 }
+
+body.dark {
+  color-scheme: dark;
+  --bg: #151515;
+  --sidebar: #1b1b1b;
+  --surface: #202020;
+  --soft: #292929;
+  --ink: #f1f1f1;
+  --muted: #a0a0a0;
+  --line: #303030;
+  --border: #383838;
+  --assistant: #e3e3e3;
+  --user-bubble: #303030;
+  --code-bg: #101114;
+  --code-text: #e8eaf0;
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; background: #fff; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  transition: background .2s, color .2s;
+}
+
 button, textarea { font: inherit; }
 button { cursor: pointer; }
+
 .app-shell { display: flex; min-height: 100vh; }
+
 .sidebar {
-  width: 272px; flex: 0 0 272px; background: #fafafa; border-right: 1px solid var(--line);
-  display: flex; flex-direction: column; padding: 23px 16px 16px;
+  width: 272px;
+  flex: 0 0 272px;
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 23px 16px 16px;
 }
-.brand { display: flex; align-items: center; gap: 11px; padding: 0 7px; margin-bottom: 30px; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 7px;
+  margin-bottom: 30px;
+}
+
 .brand-mark, .welcome-logo {
-  display: grid; place-items: center; color: white; background: #17191d; font-weight: 800;
-  letter-spacing: -1px; border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 11px;
 }
-.brand-mark { width: 38px; height: 38px; font-size: 21px; }
-.brand-copy { display: flex; flex-direction: column; gap: 3px; }
-.brand-copy strong { font-size: 15px; letter-spacing: -.3px; }
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.brand-copy strong { font-size: 15px; }
 .brand-copy span { font-size: 10px; color: var(--muted); }
-.icon-button { border: 0; background: transparent; color: #646873; font-size: 19px; border-radius: 9px; width: 36px; height: 36px; }
-.icon-button:hover { background: #eee; }
-.close-sidebar { display: none; margin-left: auto; font-size: 25px; }
-.new-chat-button {
-  display: flex; align-items: center; gap: 10px; width: 100%; border: 1px solid #e5e7eb;
-  background: #fff; color: #24262b; border-radius: 11px; padding: 12px 13px; font-size: 12px; font-weight: 600;
-  box-shadow: 0 1px 2px #11111108; transition: .18s;
+
+.icon-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 19px;
+  border-radius: 9px;
+  width: 36px;
+  height: 36px;
 }
-.new-chat-button:hover { border-color: #c9ccd2; background: #fdfdfd; }
-.plus { font-size: 19px; line-height: 12px; }
-.sidebar-label { color: #a0a3aa; font-size: 9px; letter-spacing: 1.1px; font-weight: 700; margin: 30px 8px 11px; }
-.history-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
-.history-item { text-align: left; border: 0; background: transparent; padding: 10px 11px; border-radius: 8px; color: #626670; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.history-item:hover, .history-item.active { background: #efeff0; color: #24262b; }
+
+.icon-button:hover { background: var(--soft); }
+.close-sidebar { display: none; margin-left: auto; }
+
+.new-chat-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 11px;
+  padding: 12px 13px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.new-chat-button:hover { background: var(--soft); }
+.plus { font-size: 19px; }
+
+.sidebar-label {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 1.1px;
+  font-weight: 700;
+  margin: 30px 8px 11px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.history-item {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 10px 11px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item:hover, .history-item.active {
+  background: var(--soft);
+  color: var(--ink);
+}
+
 .sidebar-bottom { margin-top: auto; }
-.model-card { display: flex; align-items: center; gap: 10px; border: 1px solid #e9eaed; background: white; border-radius: 10px; padding: 11px; }
-.status-dot { width: 7px; height: 7px; background: #25ad70; border-radius: 50%; box-shadow: 0 0 0 3px #25ad701a; }
-.model-card div { display: flex; flex-direction: column; gap: 4px; }
-.model-card strong { font-size: 11px; font-weight: 650; }
-.model-card small { font-size: 9px; color: #92959d; }
-.sidebar-footer { color: #a2a5ac; font-size: 9px; text-align: center; margin-top: 14px; }
-.sidebar-footer span { padding: 0 4px; }
-.main-panel { min-width: 0; flex: 1; display: flex; flex-direction: column; height: 100vh; }
-.topbar { height: 65px; border-bottom: 1px solid #f0f1f3; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-.topbar-title { font-size: 12px; font-weight: 600; color: #555963; }
-.topbar-right { display: flex; align-items: center; gap: 14px; }
-.online-pill { font-size: 10px; color: #5c626c; display: flex; align-items: center; gap: 7px; }
-.online-pill i { width: 6px; height: 6px; background: #25ad70; border-radius: 50%; }
+
+.model-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 11px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  background: #25ad70;
+  border-radius: 50%;
+}
+
+.model-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-card strong { font-size: 11px; }
+.model-card small { font-size: 9px; color: var(--muted); }
+
+.sidebar-footer {
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+  margin-top: 14px;
+}
+
+.main-panel {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.topbar {
+  height: 65px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.online-pill {
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.online-pill i {
+  width: 6px;
+  height: 6px;
+  background: #25ad70;
+  border-radius: 50%;
+}
+
 .menu-button, .mobile-brand { display: none; }
-.chat-area { flex: 1; overflow-y: auto; padding: 36px 24px 20px; }
-.welcome { max-width: 720px; margin: clamp(24px, 8vh, 85px) auto 30px; text-align: center; }
-.welcome-logo { width: 54px; height: 54px; border-radius: 17px; margin: 0 auto 23px; font-size: 29px; box-shadow: 0 7px 20px #11111116; }
-.eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.7px; color: #9296a0; margin-bottom: 15px; }
-.welcome h1 { margin: 0; font-size: clamp(29px, 4vw, 43px); letter-spacing: -1.9px; line-height: 1.18; font-weight: 700; color: #202228; }
-.welcome h1 span { color: #a2a5ad; }
-.welcome p { color: #8a8e98; font-size: 12px; margin: 16px 0 30px; }
-.suggestions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: left; }
-.suggestion { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 16px 14px; border: 1px solid #eceef1; border-radius: 12px; background: #fff; color: #25272d; transition: .18s; }
-.suggestion:hover { border-color: #cfd2d8; transform: translateY(-2px); box-shadow: 0 6px 18px #17191d08; }
-.suggestion span { font-size: 17px; color: #7c818b; margin-bottom: 4px; }
-.suggestion b { font-size: 10px; font-weight: 650; }
-.suggestion small { font-size: 9px; color: #989ca5; }
-.messages { max-width: 790px; margin: 0 auto; display: flex; flex-direction: column; gap: 23px; }
-.message { display: flex; gap: 11px; align-items: flex-start; animation: appear .2s ease-out; }
-@keyframes appear { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-.avatar { flex: 0 0 29px; width: 29px; height: 29px; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
-.message.assistant .avatar { background: #17191d; color: white; }
-.message.user .avatar { background: #eff0f2; color: #555963; }
-.message-body { min-width: 0; flex: 1; padding-top: 3px; }
-.message-name { font-size: 10px; font-weight: 700; color: #454952; margin-bottom: 7px; }
-.message-text { color: #343740; font-size: 13px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
-.message.user .message-text { background: #f5f6f7; border-radius: 4px 12px 12px 12px; padding: 10px 13px; display: inline-block; }
-.typing { color: #969aa3; font-size: 12px; }
-.composer-wrap { width: min(790px, calc(100% - 48px)); margin: 0 auto; padding: 12px 0 16px; flex-shrink: 0; }
-.composer { border: 1px solid #e5e7eb; border-radius: 16px; padding: 13px 14px 10px 17px; box-shadow: 0 5px 24px #17191d0a; background: white; transition: border-color .2s, box-shadow .2s; }
-.composer:focus-within { border-color: #c5c8cf; box-shadow: 0 5px 24px #17191d10; }
-textarea { display: block; width: 100%; min-height: 27px; max-height: 150px; resize: none; border: 0; outline: 0; color: #25272d; font-size: 12px; line-height: 1.6; background: transparent; }
-textarea::placeholder { color: #a0a4ad; }
-.composer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 9px; }
-.composer-hint { color: #a0a4ad; font-size: 9px; display: flex; align-items: center; gap: 5px; }
-.composer-hint b { color: #737782; font-weight: 600; }
-.sparkle { font-size: 15px; color: #737782; }
-.send-button { border: 0; background: #191b20; color: white; border-radius: 9px; padding: 7px 10px 7px 12px; display: flex; align-items: center; gap: 10px; font-size: 10px; font-weight: 600; }
-.send-button b { font-size: 17px; line-height: 12px; }
+
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 24px 20px;
+}
+
+.welcome {
+  max-width: 720px;
+  margin: clamp(24px, 8vh, 85px) auto 30px;
+  text-align: center;
+}
+
+.welcome-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  margin: 0 auto 23px;
+  box-shadow: 0 7px 20px #11111116;
+}
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.7px;
+  color: var(--muted);
+  margin-bottom: 15px;
+}
+
+.welcome h1 {
+  margin: 0;
+  font-size: clamp(29px, 4vw, 43px);
+  letter-spacing: -1.9px;
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+.welcome h1 span { color: var(--muted); }
+
+.welcome p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 16px 0 30px;
+}
+
+.suggestions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  text-align: left;
+}
+
+.suggestion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  transition: .18s;
+}
+
+.suggestion:hover {
+  border-color: var(--muted);
+  transform: translateY(-2px);
+}
+
+.suggestion span { font-size: 17px; color: var(--muted); }
+.suggestion b { font-size: 11px; }
+.suggestion small { font-size: 10px; color: var(--muted); }
+
+.messages {
+  max-width: 850px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  padding-bottom: 15px;
+}
+
+.message {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  animation: appear .2s ease-out;
+  width: 100%;
+}
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.message.assistant .avatar {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.message.assistant .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message.user .avatar {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.message-body {
+  min-width: 0;
+  max-width: calc(100% - 45px);
+  padding-top: 3px;
+}
+
+.message.user .message-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.message-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.message-text {
+  color: var(--assistant);
+  font-size: 15px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.message.user .message-text {
+  background: var(--user-bubble);
+  color: var(--ink);
+  border-radius: 14px 4px 14px 14px;
+  padding: 11px 15px;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.message-text p { margin: 0 0 12px; }
+.message-text p:last-child { margin-bottom: 0; }
+.message-text h1, .message-text h2, .message-text h3 {
+  margin: 18px 0 9px;
+  line-height: 1.35;
+}
+.message-text h1 { font-size: 22px; }
+.message-text h2 { font-size: 19px; }
+.message-text h3 { font-size: 17px; }
+.message-text ul, .message-text ol {
+  padding-left: 24px;
+  margin: 9px 0;
+}
+.message-text li { margin: 5px 0; }
+.message-text blockquote {
+  margin: 12px 0;
+  padding: 9px 14px;
+  border-left: 3px solid #999;
+  background: var(--soft);
+  border-radius: 4px;
+}
+.message-text a { color: #4388e8; text-decoration: underline; }
+.message-text hr { border: 0; border-top: 1px solid var(--line); margin: 15px 0; }
+
+.message-text code:not(.code-content) {
+  background: var(--soft);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: .9em;
+}
+
+.code-box {
+  margin: 13px 0;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--code-bg);
+  color: var(--code-text);
+  width: 100%;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: #252830;
+  color: #d7d9df;
+  font-size: 11px;
+}
+
+.copy-code {
+  border: 1px solid #555963;
+  border-radius: 6px;
+  padding: 5px 9px;
+  background: transparent;
+  color: white;
+  font-size: 10px;
+}
+
+.copy-code:hover { background: #3a3d45; }
+
+.code-content {
+  display: block;
+  padding: 14px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--code-text);
+}
+
+.typing { color: var(--muted); font-size: 13px; }
+
+.sources {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sources-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.source-link {
+  color: #4388e8;
+  font-size: 11px;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.source-link:hover { text-decoration: underline; }
+
+.composer-wrap {
+  width: min(850px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 12px 0 16px;
+  flex-shrink: 0;
+}
+
+.composer {
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  padding: 13px 14px 10px 17px;
+  box-shadow: 0 5px 24px #17191d0a;
+  background: var(--surface);
+  transition: border-color .2s;
+}
+
+.composer:focus-within { border-color: #aaa; }
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  max-height: 150px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  background: transparent;
+}
+
+textarea::placeholder { color: var(--muted); }
+
+.composer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  gap: 8px;
+}
+
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.composer-hint {
+  color: var(--muted);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.composer-hint b { color: var(--ink); }
+
+.search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 20px;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.search-toggle.active {
+  color: #16875b;
+  border-color: #29a879;
+  background: #29a87912;
+}
+
+.search-toggle .search-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #aaa;
+}
+
+.search-toggle.active .search-dot { background: #20ad76; }
+
+.send-button {
+  width: 39px;
+  height: 39px;
+  border: 0;
+  background: #191b20;
+  color: white;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 23px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.send-button:hover { background: #383b43; }
 .send-button:disabled { opacity: .45; cursor: not-allowed; }
-.disclaimer { text-align: center; color: #a3a6ad; font-size: 9px; margin-top: 10px; }
+
+.disclaimer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 10px;
+}
+
 .sidebar-backdrop { display: none; }
-@media (min-width: 1200px) { .chat-area { padding-top: 45px; } .composer-wrap { padding-bottom: 22px; } }
+
 @media (max-width: 760px) {
-  .sidebar { position: fixed; z-index: 20; inset: 0 auto 0 0; transform: translateX(-102%); transition: transform .22s ease; box-shadow: 12px 0 35px #00000012; }
+  .sidebar {
+    position: fixed;
+    z-index: 20;
+    inset: 0 auto 0 0;
+    transform: translateX(-102%);
+    transition: transform .22s ease;
+    box-shadow: 12px 0 35px #00000012;
+  }
+
   .sidebar.open { transform: translateX(0); }
   .close-sidebar, .menu-button, .mobile-brand { display: inline-flex; }
   .desktop-context { display: none; }
+
   .topbar { height: 57px; padding: 0 13px; }
-  .topbar-title { margin-right: auto; margin-left: 8px; color: #22252a; font-size: 13px; }
+  .topbar-title { margin-right: auto; margin-left: 8px; }
   .topbar-right { gap: 5px; }
-  .chat-area { padding: 20px 15px 12px; }
+
+  .chat-area { padding: 20px 13px 12px; }
   .welcome { margin: 9vh auto 24px; }
-  .welcome-logo { width: 48px; height: 48px; margin-bottom: 18px; }
   .welcome h1 { letter-spacing: -1.2px; }
-  .welcome p { font-size: 11px; line-height: 1.6; padding: 0 15px; }
+  .welcome p { font-size: 12px; line-height: 1.6; padding: 0 15px; }
+
   .suggestions { grid-template-columns: 1fr; gap: 7px; }
-  .suggestion { padding: 11px 13px; display: grid; grid-template-columns: 22px 1fr; column-gap: 8px; row-gap: 3px; }
+  .suggestion {
+    padding: 11px 13px;
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    column-gap: 8px;
+    row-gap: 3px;
+  }
   .suggestion span { grid-row: span 2; margin: 0; align-self: center; }
-  .suggestion b, .suggestion small { font-size: 10px; }
-  .composer-wrap { width: calc(100% - 24px); padding: 8px 0 12px; }
-  .composer { border-radius: 14px; }
-  .message-text { font-size: 12px; }
-  .sidebar-backdrop.show { display: block; position: fixed; z-index: 15; inset: 0; background: #0006; }
+
+  .composer-wrap { width: calc(100% - 20px); padding: 8px 0 12px; }
+  .message-text { font-size: 14px; }
+  .messages { gap: 20px; }
+  .message-body { max-width: calc(100% - 42px); }
+  .sidebar-backdrop.show {
+    display: block;
+    position: fixed;
+    z-index: 15;
+    inset: 0;
+    background: #0006;
+  }
 }
 
-  </style>
+</style>
 </head>
+
 <body>
-  <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="brand-mark">D</div>
-        <div class="brand-copy"><strong>DKB AI</strong><span>Trợ lý AI của bạn</span></div>
-        <button class="icon-button close-sidebar" id="closeSidebar" aria-label="Đóng thanh bên">×</button>
-      </div>
+<div class="app-shell">
 
-      <button class="new-chat-button" id="newChatButton">
-        <span class="plus">＋</span><span>Cuộc trò chuyện mới</span>
-      </button>
-
-      <div class="sidebar-label">GẦN ĐÂY</div>
-      <div class="history-list" id="historyList"></div>
-
-      <div class="sidebar-bottom">
-        <div class="model-card">
-          <span class="status-dot"></span>
-          <div><strong>dkb.flash.lite</strong><small>Đang sẵn sàng</small></div>
-        </div>
-        <div class="sidebar-footer">DKB AI <span>•</span> Phiên bản thử nghiệm</div>
-      </div>
-    </aside>
-
-    <main class="main-panel">
-      <header class="topbar">
-        <button class="icon-button menu-button" id="menuButton" aria-label="Mở thanh bên">☰</button>
-        <div class="topbar-title"><span class="mobile-brand">DKB AI</span><span class="desktop-context">Trợ lý AI</span></div>
-        <div class="topbar-right">
-          <span class="online-pill"><i></i> Trực tuyến</span>
-          <button class="icon-button" id="clearButton" title="Xóa cuộc trò chuyện" aria-label="Xóa cuộc trò chuyện">⌫</button>
-        </div>
-      </header>
-
-      <section class="chat-area" id="chatArea">
-        <div class="welcome" id="welcome">
-          <div class="welcome-logo">D</div>
-          <div class="eyebrow">CHÀO MỪNG ĐẾN VỚI DKB AI</div>
-          <h1>Bạn muốn tìm hiểu<br><span>điều gì hôm nay?</span></h1>
-          <p>Đặt câu hỏi, khám phá ý tưởng hoặc bắt đầu một cuộc trò chuyện mới.</p>
-          <div class="suggestions">
-            <button class="suggestion" data-prompt="Giới thiệu về DKB AI"> <span>✦</span><b>Giới thiệu DKB AI</b><small>Tìm hiểu trợ lý này</small></button>
-            <button class="suggestion" data-prompt="Giải thích một kiến thức khó theo cách dễ hiểu"> <span>⌁</span><b>Giải thích kiến thức</b><small>Học tập dễ dàng hơn</small></button>
-            <button class="suggestion" data-prompt="Giúp tôi nghĩ ra một ý tưởng website thú vị"> <span>◇</span><b>Lên ý tưởng</b><small>Khơi nguồn sáng tạo</small></button>
-          </div>
-        </div>
-        <div class="messages" id="messages" aria-live="polite"></div>
-      </section>
-
-      <footer class="composer-wrap">
-        <form class="composer" id="chatForm">
-          <textarea id="messageInput" rows="1" maxlength="4000" placeholder="Nhắn tin cho DKB AI..." aria-label="Nhập tin nhắn"></textarea>
-          <div class="composer-bottom">
-            <div class="composer-hint"><span class="sparkle">✧</span> Model <b>dkb.flash.lite</b></div>
-            <button class="send-button" id="sendButton" type="submit" aria-label="Gửi tin nhắn"><span>Gửi</span><b>↑</b></button>
-          </div>
-        </form>
-        <div class="disclaimer">DKB AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.</div>
-      </footer>
-    </main>
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <img class="brand-mark" src="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png" alt="DKB AI">
+    <div class="brand-copy">
+      <strong>DKB AI</strong>
+      <span>Trợ lý AI của bạn</span>
+    </div>
+    <button class="icon-button close-sidebar" id="closeSidebar">×</button>
   </div>
-  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-  <script>
-// DKB AI frontend — API key không đặt trong file này.
+
+  <button class="new-chat-button" id="newChatButton">
+    <span class="plus">＋</span>
+    <span>Cuộc trò chuyện mới</span>
+  </button>
+
+  <div class="sidebar-label">GẦN ĐÂY</div>
+  <div class="history-list" id="historyList"></div>
+
+  <div class="sidebar-bottom">
+    <div class="model-card">
+      <span class="status-dot"></span>
+      <div>
+        <strong>dkb.flash.lite</strong>
+        <small>Đang sẵn sàng</small>
+      </div>
+    </div>
+    <div class="sidebar-footer">DKB AI • Phiên bản thử nghiệm</div>
+  </div>
+</aside>
+
+<main class="main-panel">
+
+<header class="topbar">
+  <button class="icon-button menu-button" id="menuButton">☰</button>
+  <div class="topbar-title">
+    <span class="mobile-brand">DKB AI</span>
+    <span class="desktop-context">Trợ lý AI</span>
+  </div>
+  <div class="topbar-right">
+    <span class="online-pill"><i></i> Trực tuyến</span>
+    <button class="icon-button" id="themeButton" title="Đổi giao diện">☾</button>
+    <button class="icon-button" id="clearButton" title="Xóa cuộc trò chuyện">⌫</button>
+  </div>
+</header>
+
+<section class="chat-area" id="chatArea">
+
+<div class="welcome" id="welcome">
+  <img class="welcome-logo" src="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png" alt="DKB AI">
+
+  <div class="eyebrow">CHÀO MỪNG ĐẾN VỚI DKB AI</div>
+  <h1>Bạn muốn tìm hiểu<br><span>điều gì hôm nay?</span></h1>
+  <p>Đặt câu hỏi, khám phá ý tưởng hoặc bắt đầu một cuộc trò chuyện mới.</p>
+
+  <div class="suggestions">
+    <button class="suggestion" data-prompt="Giới thiệu về DKB AI">
+      <span>✦</span><b>Giới thiệu DKB AI</b><small>Tìm hiểu trợ lý này</small>
+    </button>
+    <button class="suggestion" data-prompt="Giải thích một kiến thức khó theo cách dễ hiểu">
+      <span>⌁</span><b>Giải thích kiến thức</b><small>Học tập dễ dàng hơn</small>
+    </button>
+    <button class="suggestion" data-prompt="Giúp tôi nghĩ ra một ý tưởng website thú vị">
+      <span>◇</span><b>Lên ý tưởng</b><small>Khơi nguồn sáng tạo</small>
+    </button>
+  </div>
+</div>
+
+<div class="messages" id="messages" aria-live="polite"></div>
+</section>
+
+<footer class="composer-wrap">
+  <form class="composer" id="chatForm">
+    <textarea id="messageInput" rows="1" maxlength="4000"
+      placeholder="Nhắn tin cho DKB AI..." aria-label="Nhập tin nhắn"></textarea>
+
+    <div class="composer-bottom">
+      <div class="composer-tools">
+        <div class="composer-hint">✧ Model <b>dkb.flash.lite</b></div>
+        <button type="button" class="search-toggle active" id="searchToggle">
+          <span class="search-dot"></span>
+          <span id="searchLabel">Tìm kiếm: Bật</span>
+        </button>
+      </div>
+
+      <button class="send-button" id="sendButton" type="submit" aria-label="Gửi tin nhắn">↑</button>
+    </div>
+  </form>
+  <div class="disclaimer">DKB AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.</div>
+</footer>
+
+</main>
+</div>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<script>
 const API_URL = "/api/chat";
+const LOGO_URL = "https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png";
 
 const form = document.getElementById("chatForm");
 const input = document.getElementById("messageInput");
@@ -206,22 +772,45 @@ const sendButton = document.getElementById("sendButton");
 const historyList = document.getElementById("historyList");
 const sidebar = document.getElementById("sidebar");
 const backdrop = document.getElementById("sidebarBackdrop");
+const searchToggle = document.getElementById("searchToggle");
+const searchLabel = document.getElementById("searchLabel");
+const themeButton = document.getElementById("themeButton");
 
 let conversations = loadConversations();
 let activeId = null;
 let busy = false;
 
+// Tìm kiếm Internet mặc định bật.
+let useSearch = true;
+
 function loadConversations() {
-  try { return JSON.parse(localStorage.getItem("dkb_ai_chats") || "[]"); }
-  catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem("dkb_ai_chats") || "[]");
+  } catch {
+    return [];
+  }
 }
+
 function saveConversations() {
   localStorage.setItem("dkb_ai_chats", JSON.stringify(conversations));
 }
-function makeId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-function currentChat() { return conversations.find(c => c.id === activeId); }
+
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function currentChat() {
+  return conversations.find(c => c.id === activeId);
+}
+
 function createChat() {
-  const chat = { id: makeId(), title: "Cuộc trò chuyện mới", messages: [], updated: Date.now() };
+  const chat = {
+    id: makeId(),
+    title: "Cuộc trò chuyện mới",
+    messages: [],
+    updated: Date.now()
+  };
+
   conversations.unshift(chat);
   activeId = chat.id;
   saveConversations();
@@ -229,100 +818,363 @@ function createChat() {
   closeSidebar();
   input.focus();
 }
+
 function renderHistory() {
   historyList.replaceChildren();
+
   conversations.slice(0, 30).forEach(chat => {
     const button = document.createElement("button");
     button.className = "history-item" + (chat.id === activeId ? " active" : "");
     button.textContent = chat.title || "Cuộc trò chuyện mới";
-    button.title = button.textContent;
+
     button.addEventListener("click", () => {
       activeId = chat.id;
       render();
       closeSidebar();
     });
+
     historyList.appendChild(button);
   });
 }
-function addMessage(role, content, temporary = false) {
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function safeURL(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      return parsed.href;
+    }
+  } catch {}
+  return null;
+}
+
+function inlineMarkdown(text) {
+  let html = escapeHTML(text);
+
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
+  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  html = html.replace(/_(.+?)_/g, "<em>$1</em>");
+  html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
+
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^ )]+)\)/g,
+    (match, label, url) => {
+      const safe = safeURL(url);
+      return safe
+        ? `<a href="${escapeHTML(safe)}" target="_blank" rel="noopener noreferrer">${label}</a>`
+        : label;
+    });
+
+  return html;
+}
+
+function renderMarkdown(text) {
+  const blocks = [];
+  let source = String(text || "");
+
+  source = source.replace(/```([\w+-]*)\n?([\s\S]*?)```/g,
+    (match, language, code) => {
+      const index = blocks.length;
+      blocks.push({ language: language || "code", code });
+      return `\n@@CODEBLOCK${index}@@\n`;
+    });
+
+  const lines = source.split("\n");
+  const output = [];
+  let paragraph = [];
+  let listType = null;
+
+  function flushParagraph() {
+    if (paragraph.length) {
+      output.push("<p>" + inlineMarkdown(paragraph.join("<br>").replace(/&lt;br&gt;/g, "<br>")) + "</p>");
+      paragraph = [];
+    }
+  }
+
+  function closeList() {
+    if (listType) {
+      output.push(listType === "ul" ? "</ul>" : "</ol>");
+      listType = null;
+    }
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    const codeMatch = trimmed.match(/^@@CODEBLOCK(\d+)@@$/);
+    if (codeMatch) {
+      flushParagraph();
+      closeList();
+      output.push(`@@CODEBLOCK${codeMatch[1]}@@`);
+      continue;
+    }
+
+    if (!trimmed) {
+      flushParagraph();
+      closeList();
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      closeList();
+      const level = heading[1].length;
+      output.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    if (/^---+$/.test(trimmed)) {
+      flushParagraph();
+      closeList();
+      output.push("<hr>");
+      continue;
+    }
+
+    const quote = trimmed.match(/^>\s?(.*)$/);
+    if (quote) {
+      flushParagraph();
+      closeList();
+      output.push(`<blockquote>${inlineMarkdown(quote[1])}</blockquote>`);
+      continue;
+    }
+
+    const ul = trimmed.match(/^[-*]\s+(.+)$/);
+    const ol = trimmed.match(/^\d+[.)]\s+(.+)$/);
+
+    if (ul || ol) {
+      flushParagraph();
+      const nextType = ul ? "ul" : "ol";
+      if (listType !== nextType) {
+        closeList();
+        output.push(nextType === "ul" ? "<ul>" : "<ol>");
+        listType = nextType;
+      }
+      output.push(`<li>${inlineMarkdown((ul || ol)[1])}</li>`);
+      continue;
+    }
+
+    closeList();
+    paragraph.push(trimmed);
+  }
+
+  flushParagraph();
+  closeList();
+
+  let html = output.join("");
+
+  html = html.replace(/@@CODEBLOCK(\d+)@@/g, (match, index) => {
+    const block = blocks[Number(index)];
+    if (!block) return "";
+
+    return `<div class="code-box">
+      <div class="code-header">
+        <span>${escapeHTML(block.language)}</span>
+        <button class="copy-code" type="button">Sao chép</button>
+      </div>
+      <pre class="code-content">${escapeHTML(block.code)}</pre>
+    </div>`;
+  });
+
+  return html;
+}
+
+function addSources(body, sources) {
+  if (!Array.isArray(sources) || !sources.length) return;
+
+  const container = document.createElement("div");
+  container.className = "sources";
+
+  const title = document.createElement("div");
+  title.className = "sources-title";
+  title.textContent = "Nguồn tham khảo";
+  container.appendChild(title);
+
+  sources.slice(0, 8).forEach((source, index) => {
+    const url = typeof source === "string" ? source : source.url;
+    const safe = safeURL(url || "");
+    if (!safe) return;
+
+    const link = document.createElement("a");
+    link.className = "source-link";
+    link.href = safe;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = (source.title || source.name || safe).toString();
+    container.appendChild(link);
+  });
+
+  if (container.children.length > 1) body.appendChild(container);
+}
+
+function addMessage(role, content, temporary = false, sources = []) {
   const wrap = document.createElement("article");
   wrap.className = `message ${role}`;
+
   const avatar = document.createElement("div");
   avatar.className = "avatar";
-  avatar.textContent = role === "assistant" ? "D" : "B";
+
+  if (role === "assistant") {
+    const image = document.createElement("img");
+    image.src = LOGO_URL;
+    image.alt = "DKB AI";
+    avatar.appendChild(image);
+  } else {
+    avatar.textContent = "B";
+  }
+
   const body = document.createElement("div");
   body.className = "message-body";
+
   const name = document.createElement("div");
   name.className = "message-name";
   name.textContent = role === "assistant" ? "DKB AI" : "Bạn";
+
   const text = document.createElement("div");
   text.className = temporary ? "typing" : "message-text";
-  text.textContent = content;
+
+  if (temporary) {
+    text.textContent = content;
+  } else if (role === "assistant") {
+    text.innerHTML = renderMarkdown(content);
+  } else {
+    text.textContent = content;
+  }
+
   body.append(name, text);
+
+  if (!temporary && role === "assistant") {
+    addSources(body, sources);
+  }
+
   wrap.append(avatar, body);
   messagesEl.appendChild(wrap);
-  messagesEl.scrollIntoView({ block: "end", behavior: "smooth" });
+
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
   return { wrap, text };
 }
+
 function render() {
   messagesEl.replaceChildren();
+
   const chat = currentChat();
   const hasMessages = !!chat && chat.messages.length > 0;
+
   welcome.hidden = hasMessages;
-  if (chat) chat.messages.forEach(m => addMessage(m.role, m.content));
+
+  if (chat) {
+    chat.messages.forEach(message => {
+      addMessage(
+        message.role,
+        message.content,
+        false,
+        message.sources || []
+      );
+    });
+  }
+
   renderHistory();
 }
+
 function closeSidebar() {
   sidebar.classList.remove("open");
   backdrop.classList.remove("show");
 }
+
 function openSidebar() {
   sidebar.classList.add("open");
   backdrop.classList.add("show");
 }
+
 function setBusy(value) {
   busy = value;
   sendButton.disabled = value;
-  sendButton.querySelector("span").textContent = value ? "Đang gửi" : "Gửi";
+  sendButton.textContent = value ? "…" : "↑";
 }
+
+function setSearch(enabled) {
+  useSearch = enabled;
+  searchToggle.classList.toggle("active", enabled);
+  searchLabel.textContent = enabled ? "Tìm kiếm: Bật" : "Tìm kiếm: Tắt";
+}
+
 async function sendMessage(raw) {
   const content = raw.trim();
   if (!content || busy) return;
+
   if (!currentChat()) createChat();
+
   const chat = currentChat();
+
   chat.messages.push({ role: "user", content });
-  if (chat.messages.length === 1) chat.title = content.slice(0, 38) + (content.length > 38 ? "…" : "");
+
+  if (chat.messages.length === 1) {
+    chat.title = content.slice(0, 38) + (content.length > 38 ? "…" : "");
+  }
+
   chat.updated = Date.now();
   saveConversations();
+
   input.value = "";
   resizeInput();
   render();
+
   const typing = addMessage("assistant", "DKB AI đang suy nghĩ…", true);
   setBusy(true);
+
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        messages: chat.messages.map(m => ({
-          role: m.role === "assistant" ? "assistant" : "user",
-          content: m.content
-        }))
+        messages: chat.messages.map(message => ({
+          role: message.role === "assistant" ? "assistant" : "user",
+          content: message.content
+        })),
+        performance: "balanced",
+        useSearch: useSearch
       })
     });
+
     const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      throw new Error(data.details || data.error || `Lỗi máy chủ (${response.status})`);
+      throw new Error(
+        data.details || data.error || `Lỗi máy chủ (${response.status})`
+      );
     }
+
     if (!data.reply || typeof data.reply !== "string") {
       throw new Error("Máy chủ chưa trả về nội dung câu trả lời.");
     }
+
     typing.wrap.remove();
-    chat.messages.push({ role: "assistant", content: data.reply });
+
+    const sources = Array.isArray(data.sources) ? data.sources : [];
+
+    chat.messages.push({
+      role: "assistant",
+      content: data.reply,
+      sources
+    });
+
     chat.updated = Date.now();
     saveConversations();
-    addMessage("assistant", data.reply);
+
+    addMessage("assistant", data.reply, false, sources);
     renderHistory();
+
   } catch (error) {
     typing.text.textContent = "Không thể kết nối DKB AI: " + error.message;
     typing.text.className = "message-text";
@@ -331,46 +1183,89 @@ async function sendMessage(raw) {
     input.focus();
   }
 }
+
 function resizeInput() {
   input.style.height = "auto";
   input.style.height = Math.min(input.scrollHeight, 150) + "px";
 }
-form.addEventListener("submit", e => {
-  e.preventDefault();
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
   sendMessage(input.value);
 });
+
 input.addEventListener("input", resizeInput);
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
+
+input.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
     form.requestSubmit();
   }
 });
+
 document.getElementById("newChatButton").addEventListener("click", createChat);
+
 document.getElementById("clearButton").addEventListener("click", () => {
   const chat = currentChat();
   if (!chat || !chat.messages.length) return;
+
   if (!confirm("Xóa nội dung cuộc trò chuyện này?")) return;
+
   chat.messages = [];
   chat.title = "Cuộc trò chuyện mới";
   saveConversations();
   render();
 });
+
 document.getElementById("menuButton").addEventListener("click", openSidebar);
 document.getElementById("closeSidebar").addEventListener("click", closeSidebar);
 backdrop.addEventListener("click", closeSidebar);
-document.querySelectorAll(".suggestion").forEach(button => {
-  button.addEventListener("click", () => sendMessage(button.dataset.prompt));
+
+searchToggle.addEventListener("click", () => {
+  setSearch(!useSearch);
 });
 
-// Khởi tạo: mở một cuộc trò chuyện mới nếu chưa có cuộc trò chuyện nào.
-if (conversations.length) {
-  activeId = conversations[0].id;
-  render();
-} else {
-  render();
+themeButton.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  const dark = document.body.classList.contains("dark");
+  themeButton.textContent = dark ? "☀" : "☾";
+  localStorage.setItem("dkb_ai_theme", dark ? "dark" : "light");
+});
+
+document.addEventListener("click", async event => {
+  const button = event.target.closest(".copy-code");
+  if (!button) return;
+
+  const code = button.closest(".code-box").querySelector(".code-content").textContent;
+
+  try {
+    await navigator.clipboard.writeText(code);
+    button.textContent = "Đã sao chép!";
+    setTimeout(() => button.textContent = "Sao chép", 1500);
+  } catch {
+    button.textContent = "Không sao chép được";
+  }
+});
+
+document.querySelectorAll(".suggestion").forEach(button => {
+  button.addEventListener("click", () => {
+    sendMessage(button.dataset.prompt);
+  });
+});
+
+// Khôi phục giao diện đã chọn.
+if (localStorage.getItem("dkb_ai_theme") === "dark") {
+  document.body.classList.add("dark");
+  themeButton.textContent = "☀";
 }
 
-  </script>
+// Khởi tạo ứng dụng.
+if (conversations.length) {
+  activeId = conversations[0].id;
+}
+
+setSearch(true);
+render();
+</script>
 </body>
 </html>
