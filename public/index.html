@@ -6,99 +6,1473 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
 <title>DKB AI — Trợ lý AI của bạn</title>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root{font-family:Inter,Arial,sans-serif;--bg:#fff;--side:#fafafa;--surface:#fff;--soft:#f5f6f7;--ink:#202124;--muted:#858993;--line:#eceef1;--border:#e5e7eb;--assistant:#343740;--bubble:#f1f2f4;--purple:#7957e8}
-body.dark{color-scheme:dark;--bg:#151515;--side:#1b1b1b;--surface:#202020;--soft:#292929;--ink:#f1f1f1;--muted:#a0a0a0;--line:#303030;--border:#383838;--assistant:#e3e3e3;--bubble:#303030}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Arial,sans-serif}button,textarea{font:inherit}button{cursor:pointer}
+
+:root{
+font-family:Inter,Arial,sans-serif;
+--bg:#fff;
+--side:#fafafa;
+--surface:#fff;
+--soft:#f5f6f7;
+--ink:#202124;
+--muted:#858993;
+--line:#eceef1;
+--border:#e5e7eb;
+--assistant:#343740;
+--bubble:#f1f2f4;
+--purple:#7957e8;
+}
+
+body.dark{
+color-scheme:dark;
+--bg:#151515;
+--side:#1b1b1b;
+--surface:#202020;
+--soft:#292929;
+--ink:#f1f1f1;
+--muted:#a0a0a0;
+--line:#303030;
+--border:#383838;
+--assistant:#e3e3e3;
+--bubble:#303030;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Arial,sans-serif}
+button,textarea,select,input{font:inherit}
+button{cursor:pointer}
+
 .app{display:flex;height:100dvh;overflow:hidden}
-.sidebar{width:260px;flex-shrink:0;background:var(--side);border-right:1px solid var(--line);padding:20px 15px;display:flex;flex-direction:column}
-.brand{display:flex;align-items:center;gap:10px;margin:0 5px 25px}.brand img{width:40px;height:40px;border-radius:11px;object-fit:cover}.brand strong{font-size:15px}.brand small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
-.newchat{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:600;text-align:left;font-size:12px}
-.section{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin:27px 7px 10px}.history{overflow:auto}.history button{display:block;width:100%;padding:10px;border:0;background:transparent;color:var(--muted);text-align:left;border-radius:8px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history button.active,.history button:hover{background:var(--soft);color:var(--ink)}
-.bottom{margin-top:auto}.modelcard{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:12px;font-size:11px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#25ad70;margin-right:7px}.modelcard small{display:block;color:var(--muted);margin:5px 0 0 15px}
-.main{min-width:0;flex:1;display:flex;flex-direction:column;height:100%}.top{height:62px;flex-shrink:0;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 25px}.top strong{font-size:13px}.top button{border:0;background:transparent;color:var(--muted);font-size:19px;padding:8px}
-.chat{flex:1;overflow:auto;padding:30px 20px}.welcome{max-width:700px;margin:8vh auto 30px;text-align:center}.welcome img{width:60px;height:60px;border-radius:15px;object-fit:cover;margin-bottom:20px}.eyebrow{font-size:10px;letter-spacing:1.5px;color:var(--muted);font-weight:700}.welcome h1{font-size:clamp(29px,4vw,42px);letter-spacing:-1.5px}.welcome h1 span{color:var(--muted)}.welcome p{font-size:13px;color:var(--muted)}
-.suggestions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:28px}.suggestion{padding:15px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink)}.suggestion b{display:block;font-size:11px;margin:7px 0}.suggestion small{font-size:10px;color:var(--muted)}
-.messages{max-width:850px;margin:auto;display:flex;flex-direction:column;gap:24px}.message{display:flex;gap:11px;animation:show .2s ease}.message.user{flex-direction:row-reverse}@keyframes show{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-.avatar{width:32px;height:32px;flex-shrink:0;border-radius:9px;overflow:hidden;background:var(--soft);display:grid;place-items:center;font-size:12px}.avatar img{width:100%;height:100%;object-fit:cover}.bodymsg{max-width:calc(100% - 44px);min-width:0;padding-top:3px}.message.user .bodymsg{display:flex;align-items:flex-end;flex-direction:column}.name{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:7px}.text{font-size:14px;line-height:1.8;overflow-wrap:anywhere;color:var(--assistant)}.message.user .text{background:var(--bubble);color:var(--ink);padding:10px 14px;border-radius:13px 4px 13px 13px}
-.text p{margin:0 0 12px}.text h1,.text h2,.text h3{line-height:1.4}.text h1{font-size:22px}.text h2{font-size:19px}.text h3{font-size:17px}.text li{margin:5px 0}.text blockquote{border-left:3px solid var(--purple);padding:8px 13px;background:var(--soft)}.text a{color:#4388e8}.text code:not(.code){background:var(--soft);padding:2px 5px;border-radius:4px}
-.codebox{margin:12px 0;background:#17191f;color:#eee;border-radius:10px;overflow:hidden}.codehead{display:flex;justify-content:space-between;padding:9px 12px;background:#252830;font-size:11px}.codehead button{background:transparent;color:white;border:1px solid #666;border-radius:5px;padding:4px 8px;font-size:10px}.code{display:block;overflow:auto;padding:14px;white-space:pre;font:12px/1.6 Consolas,monospace}
-.actions{display:flex;gap:7px;margin-top:9px}.actions button{font-size:10px;padding:5px 9px;border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:7px}
-.sources{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}.sources b{font-size:10px;color:var(--muted);display:block;margin-bottom:5px}.sources a{display:block;color:#4388e8;font-size:11px;margin:5px 0;overflow-wrap:anywhere}
-.composerwrap{width:min(850px,calc(100% - 40px));margin:auto;padding:10px 0 15px;flex-shrink:0}.composer{border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:var(--surface);box-shadow:0 5px 24px #17191d0a}.composer:focus-within{border-color:#a58cff}textarea{width:100%;min-height:30px;max-height:140px;resize:none;border:0;outline:0;background:transparent;color:var(--ink);font-size:14px;line-height:1.6}textarea::placeholder{color:var(--muted)}
-.tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}.tool{border:1px solid var(--border);border-radius:20px;padding:7px 10px;background:var(--surface);color:var(--muted);font-size:10px}.tool.active{color:#16875b;border-color:#29a879;background:#29a87912}.send{width:39px;height:39px;border:0;border-radius:50%;background:#191b20;color:white;font-size:21px}.send.stop{background:#bd4242}
-.mode{display:flex;align-items:center;gap:8px;margin-top:12px}.mode label{font-size:10px;color:var(--muted);font-weight:700}.switch{width:140px;height:30px;border-radius:20px;background:var(--soft);border:1px solid var(--border);display:flex;padding:3px;position:relative}.indicator{position:absolute;width:65px;height:22px;top:3px;left:3px;border-radius:20px;background:linear-gradient(110deg,#7957e8,#a78bfa);transition:transform .2s}.switch.max .indicator{transform:translateX(68px)}.mode button{z-index:1;flex:1;border:0;background:transparent;color:var(--muted);font-size:10px;font-weight:700}.mode button.active{color:white}.mode small{font-size:9px;color:var(--muted)}
-.preview{display:none;align-items:center;gap:8px;margin-bottom:8px;background:var(--soft);padding:7px;border-radius:8px;width:max-content}.preview.show{display:flex}.preview img{width:40px;height:40px;object-fit:cover;border-radius:6px}.preview span{font-size:10px;color:var(--muted)}.preview button{border:0;background:transparent;color:var(--muted)}
+
+.sidebar{
+width:260px;flex-shrink:0;background:var(--side);
+border-right:1px solid var(--line);padding:20px 15px;
+display:flex;flex-direction:column
+}
+
+.brand{display:flex;align-items:center;gap:10px;margin:0 5px 25px}
+.brand img{width:40px;height:40px;border-radius:11px;object-fit:cover}
+.brand strong{font-size:15px}
+.brand small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+
+.newchat{
+width:100%;padding:12px;border:1px solid var(--border);
+border-radius:10px;background:var(--surface);color:var(--ink);
+font-weight:600;text-align:left;font-size:12px
+}
+
+.section{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin:27px 7px 10px}
+.history{overflow:auto}
+.history button{
+display:block;width:100%;padding:10px;border:0;
+background:transparent;color:var(--muted);text-align:left;
+border-radius:8px;font-size:11px;overflow:hidden;
+text-overflow:ellipsis;white-space:nowrap
+}
+.history button.active,.history button:hover{background:var(--soft);color:var(--ink)}
+
+.bottom{margin-top:auto}
+.modelcard{
+border:1px solid var(--border);background:var(--surface);
+border-radius:10px;padding:12px;font-size:11px
+}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#25ad70;margin-right:7px}
+.modelcard small{display:block;color:var(--muted);margin:5px 0 0 15px}
+
+.main{min-width:0;flex:1;display:flex;flex-direction:column;height:100%}
+
+.top{
+height:62px;flex-shrink:0;border-bottom:1px solid var(--line);
+display:flex;align-items:center;justify-content:space-between;padding:0 25px
+}
+.top strong{font-size:13px}
+.top button{border:0;background:transparent;color:var(--muted);font-size:19px;padding:8px}
+
+.chat{flex:1;overflow:auto;padding:30px 20px}
+
+.welcome{max-width:700px;margin:8vh auto 30px;text-align:center}
+.welcome img{width:60px;height:60px;border-radius:15px;object-fit:cover;margin-bottom:20px}
+.eyebrow{font-size:10px;letter-spacing:1.5px;color:var(--muted);font-weight:700}
+.welcome h1{font-size:clamp(29px,4vw,42px);letter-spacing:-1.5px}
+.welcome h1 span{color:var(--muted)}
+.welcome p{font-size:13px;color:var(--muted)}
+
+.suggestions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:28px}
+.suggestion{
+padding:15px;text-align:left;border:1px solid var(--line);
+border-radius:12px;background:var(--surface);color:var(--ink)
+}
+.suggestion b{display:block;font-size:11px;margin:7px 0}
+.suggestion small{font-size:10px;color:var(--muted)}
+
+.messages{max-width:850px;margin:auto;display:flex;flex-direction:column;gap:24px}
+.message{display:flex;gap:11px;animation:show .2s ease}
+.message.user{flex-direction:row-reverse}
+
+@keyframes show{
+from{opacity:0;transform:translateY(5px)}
+to{opacity:1;transform:none}
+}
+
+.avatar{
+width:32px;height:32px;flex-shrink:0;border-radius:9px;
+overflow:hidden;background:var(--soft);display:grid;place-items:center;font-size:12px
+}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.bodymsg{max-width:calc(100% - 44px);min-width:0;padding-top:3px}
+.message.user .bodymsg{display:flex;align-items:flex-end;flex-direction:column}
+.name{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:7px}
+.text{font-size:14px;line-height:1.8;overflow-wrap:anywhere;color:var(--assistant)}
+.message.user .text{
+background:var(--bubble);color:var(--ink);
+padding:10px 14px;border-radius:13px 4px 13px 13px
+}
+
+.text p{margin:0 0 12px}
+.text h1,.text h2,.text h3{line-height:1.4}
+.text h1{font-size:22px}
+.text h2{font-size:19px}
+.text h3{font-size:17px}
+.text li{margin:5px 0}
+.text blockquote{border-left:3px solid var(--purple);padding:8px 13px;background:var(--soft)}
+.text a{color:#4388e8}
+.text code:not(.code){background:var(--soft);padding:2px 5px;border-radius:4px}
+
+.codebox{margin:12px 0;background:#17191f;color:#eee;border-radius:10px;overflow:hidden}
+.codehead{display:flex;justify-content:space-between;padding:9px 12px;background:#252830;font-size:11px}
+.codehead button{background:transparent;color:white;border:1px solid #666;border-radius:5px;padding:4px 8px;font-size:10px}
+.code{display:block;overflow:auto;padding:14px;white-space:pre;font:12px/1.6 Consolas,monospace}
+
+.actions{display:flex;gap:7px;margin-top:9px}
+.actions button{
+font-size:10px;padding:5px 9px;border:1px solid var(--border);
+background:var(--surface);color:var(--muted);border-radius:7px
+}
+
+.sources{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.sources b{font-size:10px;color:var(--muted);display:block;margin-bottom:5px}
+.sources a{display:block;color:#4388e8;font-size:11px;margin:5px 0;overflow-wrap:anywhere}
+
+.composerwrap{
+position:relative;width:min(850px,calc(100% - 40px));
+margin:auto;padding:10px 0 15px;flex-shrink:0
+}
+
+.composer{
+border:1px solid var(--border);border-radius:16px;
+padding:12px 14px;background:var(--surface);
+box-shadow:0 5px 24px #17191d0a
+}
+.composer:focus-within{border-color:#a58cff}
+
+textarea{
+width:100%;min-height:30px;max-height:140px;resize:none;
+border:0;outline:0;background:transparent;color:var(--ink);
+font-size:14px;line-height:1.6
+}
+textarea::placeholder{color:var(--muted)}
+
+.tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}
+
+.tool{
+border:1px solid var(--border);border-radius:20px;
+padding:7px 10px;background:var(--surface);
+color:var(--muted);font-size:10px
+}
+.tool.active{color:#16875b;border-color:#29a879;background:#29a87912}
+
+.send{
+width:39px;height:39px;border:0;border-radius:50%;
+background:#191b20;color:white;font-size:21px
+}
+.send.stop{background:#bd4242}
+
+.preview{
+display:none;align-items:center;gap:8px;margin-bottom:8px;
+background:var(--soft);padding:7px;border-radius:8px;width:max-content
+}
+.preview.show{display:flex}
+.preview img{width:40px;height:40px;object-fit:cover;border-radius:6px}
+.preview span{font-size:10px;color:var(--muted)}
+.preview button{border:0;background:transparent;color:var(--muted)}
+
 .disclaimer{text-align:center;color:var(--muted);font-size:9px;margin-top:9px}
-@media(max-width:760px){.sidebar{position:fixed;z-index:10;inset:0 auto 0 0;transform:translateX(-105%);transition:.2s;box-shadow:10px 0 30px #0002}.sidebar.open{transform:translateX(0)}.backdrop.show{display:block;position:fixed;inset:0;background:#0006;z-index:9}.top{height:55px;padding:0 12px}.chat{padding:18px 12px}.welcome{margin:8vh auto 20px}.suggestions{grid-template-columns:1fr}.suggestion{padding:11px}.composerwrap{width:calc(100% - 18px)}.mode small{width:100%}.mode{flex-wrap:wrap}}
+
+/* ===== HAI NÚT CÔNG CỤ ===== */
+
+.quick-actions{
+display:flex;align-items:center;gap:9px;margin-top:11px
+}
+
+.quick-btn{
+display:flex;align-items:center;gap:7px;
+padding:9px 14px;border:1px solid var(--border);
+border-radius:22px;background:var(--surface);
+color:var(--ink);font-size:11px;font-weight:700;
+transition:.2s
+}
+
+.quick-btn:hover,.quick-btn.active{
+border-color:var(--purple);color:var(--purple);
+background:#7957e810
+}
+
+.quick-btn.image-btn{
+background:linear-gradient(110deg,#7957e8,#a678f5);
+color:white;border-color:transparent
+}
+.quick-btn.image-btn:hover{opacity:.9}
+
+/* ===== BẢNG HIỆU SUẤT VÀ TẠO ẢNH ===== */
+
+.popup-panel{
+display:none;position:absolute;z-index:20;
+bottom:calc(100% + 10px);left:0;
+width:min(100%,470px);padding:18px;
+border:1px solid var(--border);border-radius:20px;
+background:var(--surface);box-shadow:0 12px 40px #0002;
+animation:popupShow .2s ease
+}
+
+.popup-panel.show{display:block}
+
+@keyframes popupShow{
+from{opacity:0;transform:translateY(10px)}
+to{opacity:1;transform:translateY(0)}
+}
+
+.performance-heading{text-align:center;margin-bottom:14px}
+.performance-heading strong{
+display:block;color:var(--purple);font-size:20px;margin-bottom:5px
+}
+.performance-heading span{font-size:12px;color:var(--muted)}
+
+.performance-range{
+width:100%;height:43px;appearance:none;
+-webkit-appearance:none;border-radius:30px;
+outline:none;
+background:linear-gradient(110deg,#7957e8,#bb83ff);
+padding:0 5px;cursor:pointer
+}
+
+.performance-range::-webkit-slider-thumb{
+appearance:none;-webkit-appearance:none;
+width:34px;height:34px;border-radius:50%;
+background:white;border:1px solid #eee;
+box-shadow:0 3px 12px #0003
+}
+
+.performance-range::-moz-range-thumb{
+width:30px;height:30px;border:0;border-radius:50%;
+background:white;box-shadow:0 3px 12px #0003
+}
+
+.performance-labels{
+display:flex;justify-content:space-between;
+margin-top:9px;color:var(--muted);font-size:10px
+}
+
+.image-panel{width:min(100%,520px)}
+.image-panel h3{font-size:16px;margin:0 0 6px}
+.image-panel p{font-size:11px;color:var(--muted);margin:0 0 13px}
+
+.image-prompt{
+width:100%;min-height:95px;padding:12px;
+border:1px solid var(--border);border-radius:12px;
+background:var(--soft);color:var(--ink);
+font-size:12px;resize:vertical;outline:none
+}
+
+.image-options{display:flex;align-items:center;gap:10px;margin-top:12px}
+.image-options select{
+flex:1;padding:10px;border:1px solid var(--border);
+border-radius:9px;background:var(--surface);
+color:var(--ink);font-size:11px
+}
+
+.generate-image-btn{
+width:100%;margin-top:12px;padding:12px;
+border:0;border-radius:11px;color:white;
+background:linear-gradient(110deg,#7957e8,#a678f5);
+font-size:12px;font-weight:700
+}
+.generate-image-btn:disabled{opacity:.6;cursor:wait}
+
+.generated-image{
+display:block;width:min(100%,500px);height:auto;
+border-radius:13px;margin-top:12px;border:1px solid var(--border)
+}
+
+.image-result{
+max-width:100%;border-radius:12px;
+margin-top:10px;overflow:hidden
+}
+.image-result img{display:block;max-width:100%;height:auto}
+.image-result button{
+margin-top:8px;padding:7px 11px;border:1px solid var(--border);
+background:var(--surface);color:var(--ink);
+border-radius:8px;font-size:11px
+}
+
 .backdrop{display:none}
+
+@media(max-width:760px){
+.sidebar{
+position:fixed;z-index:10;inset:0 auto 0 0;
+transform:translateX(-105%);transition:.2s;
+box-shadow:10px 0 30px #0002
+}
+.sidebar.open{transform:translateX(0)}
+.backdrop.show{
+display:block;position:fixed;inset:0;
+background:#0006;z-index:9
+}
+.top{height:55px;padding:0 12px}
+.chat{padding:18px 12px}
+.welcome{margin:8vh auto 20px}
+.suggestions{grid-template-columns:1fr}
+.suggestion{padding:11px}
+.composerwrap{width:calc(100% - 18px)}
+}
+
+@media(max-width:500px){
+.popup-panel{width:100%;padding:15px}
+.quick-btn{padding:9px 11px;font-size:10px}
+}
 </style>
 </head>
+
 <body>
 <div class="app">
+
 <aside class="sidebar" id="sidebar">
- <div class="brand"><img src="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png"><div><strong>DKB AI</strong><small>Trợ lý AI của bạn</small></div></div>
- <button class="newchat" id="newChat">＋ Cuộc trò chuyện mới</button>
- <div class="section">GẦN ĐÂY</div><div class="history" id="history"></div>
- <div class="bottom"><div class="modelcard"><span class="dot"></span><b>dkb.flash.lite</b><small id="health">Đang kiểm tra máy chủ…</small></div></div>
+  <div class="brand">
+    <img src="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png">
+    <div><strong>DKB AI</strong><small>Trợ lý AI của bạn</small></div>
+  </div>
+
+  <button class="newchat" id="newChat">＋ Cuộc trò chuyện mới</button>
+  <div class="section">GẦN ĐÂY</div>
+  <div class="history" id="history"></div>
+
+  <div class="bottom">
+    <div class="modelcard">
+      <span class="dot"></span><b>dkb.flash.lite</b>
+      <small id="health">Đang kiểm tra máy chủ…</small>
+    </div>
+  </div>
 </aside>
+
 <main class="main">
- <header class="top"><button id="menu">☰</button><strong>DKB AI</strong><div><button id="theme">☾</button><button id="export" title="Xuất chat">⇩</button><button id="clear" title="Xóa chat">⌫</button></div></header>
- <section class="chat" id="chat">
-  <div class="welcome" id="welcome"><img src="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png"><div class="eyebrow">CHÀO MỪNG ĐẾN VỚI DKB AI</div><h1>Bạn muốn tìm hiểu<br><span>điều gì hôm nay?</span></h1><p>Đặt câu hỏi, khám phá ý tưởng hoặc bắt đầu trò chuyện mới.</p><div class="suggestions"><button class="suggestion" data-prompt="Giới thiệu về DKB AI"><b>✦ Giới thiệu DKB AI</b><small>Tìm hiểu trợ lý này</small></button><button class="suggestion" data-prompt="Giải thích một kiến thức khó theo cách dễ hiểu"><b>⌁ Giải thích kiến thức</b><small>Học tập dễ dàng hơn</small></button><button class="suggestion" data-prompt="Giúp tôi nghĩ ra một ý tưởng website thú vị"><b>◇ Lên ý tưởng</b><small>Khơi nguồn sáng tạo</small></button></div></div>
-  <div class="messages" id="messages"></div>
- </section>
- <footer class="composerwrap"><form class="composer" id="form">
-  <div class="preview" id="preview"><img id="previewImg"><span id="previewName"></span><button type="button" id="removeImage">×</button></div>
+
+<header class="top">
+  <button id="menu">☰</button>
+  <strong>DKB AI</strong>
+  <div>
+    <button id="theme">☾</button>
+    <button id="export" title="Xuất chat">⇩</button>
+    <button id="clear" title="Xóa chat">⌫</button>
+  </div>
+</header>
+
+<section class="chat" id="chat">
+
+<div class="welcome" id="welcome">
+  <img src="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png">
+  <div class="eyebrow">CHÀO MỪNG ĐẾN VỚI DKB AI</div>
+  <h1>Bạn muốn tìm hiểu<br><span>điều gì hôm nay?</span></h1>
+  <p>Đặt câu hỏi, khám phá ý tưởng hoặc bắt đầu trò chuyện mới.</p>
+
+  <div class="suggestions">
+    <button class="suggestion" data-prompt="Giới thiệu về DKB AI">
+      <b>✦ Giới thiệu DKB AI</b>
+      <small>Tìm hiểu trợ lý này</small>
+    </button>
+
+    <button class="suggestion" data-prompt="Giải thích một kiến thức khó theo cách dễ hiểu">
+      <b>⌁ Giải thích kiến thức</b>
+      <small>Học tập dễ dàng hơn</small>
+    </button>
+
+    <button class="suggestion" data-prompt="Giúp tôi nghĩ ra một ý tưởng website thú vị">
+      <b>◇ Lên ý tưởng</b>
+      <small>Khơi nguồn sáng tạo</small>
+    </button>
+  </div>
+</div>
+
+<div class="messages" id="messages"></div>
+</section>
+
+<footer class="composerwrap">
+
+<!-- POPUP HIỆU SUẤT -->
+<div class="popup-panel" id="performancePanel">
+  <div class="performance-heading">
+    <strong id="performanceTitle">Lite</strong>
+    <span id="performanceDescription">Mức 1 · Phản hồi nhanh</span>
+  </div>
+
+  <input
+    type="range"
+    min="1"
+    max="100"
+    value="1"
+    class="performance-range"
+    id="performanceRange"
+  >
+
+  <div class="performance-labels">
+    <span>Mức 1 · Lite</span>
+    <span>Max · Mức cao</span>
+  </div>
+</div>
+
+<!-- POPUP TẠO ẢNH -->
+<div class="popup-panel image-panel" id="imagePanel">
+  <h3>✦ Tạo ảnh AI</h3>
+  <p>Mô tả hình ảnh bạn muốn DKB AI tạo.</p>
+
+  <textarea
+    class="image-prompt"
+    id="imagePrompt"
+    placeholder="Ví dụ: Một thành phố tương lai vào ban đêm, ánh đèn neon, phong cách điện ảnh..."
+  ></textarea>
+
+  <div class="image-options">
+    <select id="imageAspect">
+      <option value="1:1">Vuông · 1:1</option>
+      <option value="16:9">Ngang · 16:9</option>
+      <option value="9:16">Dọc · 9:16</option>
+      <option value="4:3">Ngang · 4:3</option>
+      <option value="3:4">Dọc · 3:4</option>
+      <option value="3:2">Ngang · 3:2</option>
+      <option value="2:3">Dọc · 2:3</option>
+      <option value="21:9">Siêu rộng · 21:9</option>
+    </select>
+  </div>
+
+  <button type="button" class="generate-image-btn" id="generateImageBtn">
+    ✦ Tạo ảnh
+  </button>
+</div>
+
+<form class="composer" id="form">
+
+  <div class="preview" id="preview">
+    <img id="previewImg">
+    <span id="previewName"></span>
+    <button type="button" id="removeImage">×</button>
+  </div>
+
   <textarea id="input" rows="1" maxlength="4000" placeholder="Nhắn tin cho DKB AI..."></textarea>
-  <div class="row"><div class="tools"><button type="button" class="tool active" id="search">● Tìm kiếm: Bật</button><button type="button" class="tool" id="addImage">＋ Ảnh</button><input type="file" id="imageFile" accept="image/*" hidden><button type="button" class="tool" id="voice">◉ Giọng nói</button></div><button class="send" id="send" type="submit">↑</button></div>
-  <div class="mode"><label>CHẾ ĐỘ</label><div class="switch" id="switch"><span class="indicator"></span><button type="button" data-mode="lite" class="active">Lite</button><button type="button" data-mode="max">Max</button></div><small id="modeInfo">Lite • Phản hồi nhanh, tiết kiệm</small></div>
- </form><div class="disclaimer">DKB AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.</div></footer>
+
+  <div class="row">
+    <div class="tools">
+      <button type="button" class="tool active" id="search">● Tìm kiếm: Bật</button>
+      <button type="button" class="tool" id="addImage">＋ Ảnh</button>
+      <input type="file" id="imageFile" accept="image/*" hidden>
+      <button type="button" class="tool" id="voice">◉ Giọng nói</button>
+    </div>
+
+    <button class="send" id="send" type="submit">↑</button>
+  </div>
+</form>
+
+<!-- HAI NÚT NẰM BÊN NGOÀI -->
+<div class="quick-actions">
+  <button type="button" class="quick-btn" id="performanceButton">
+    ⚡ Hiệu suất AI
+  </button>
+
+  <button type="button" class="quick-btn image-btn" id="imageButton">
+    ✦ Tạo ảnh
+  </button>
+</div>
+
+<div class="disclaimer">
+  DKB AI có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.
+</div>
+
+</footer>
 </main>
-</div><div class="backdrop" id="backdrop"></div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
 <script>
-const API="/api/chat",STREAM="/api/chat-stream",TRANSCRIBE="/api/transcribe",LOGO="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png";
+const API="/api/chat";
+const STREAM="/api/chat-stream";
+const TRANSCRIBE="/api/transcribe";
+const IMAGE_API="/api/generate-image";
+const LOGO="https://cdn.phototourl.com/member/2026-11-11-fcfa3d87-4292-4101-98f4-a00ba790b43f.png";
+
 const $=id=>document.getElementById(id);
-let chats=load(),active=chats[0]?.id||null,search=true,mode="lite",busy=false,controller=null,imageData=null,recorder=null,chunks=[];
-function load(){try{return JSON.parse(localStorage.getItem("dkb_ai_chats")||"[]")}catch{return[]}}
-function save(){try{localStorage.setItem("dkb_ai_chats",JSON.stringify(chats.slice(0,30)))}catch{alert("Bộ nhớ trình duyệt đã đầy.")}}
-function current(){return chats.find(c=>c.id===active)}
-function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function safeURL(s){try{let u=new URL(s);return["https:","http:"].includes(u.protocol)?u.href:null}catch{return null}}
-function inline(s){let h=escapeHTML(s);h=h.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/\*(.+?)\*/g,"<i>$1</i>").replace(/~~(.+?)~~/g,"<del>$1</del>");return h.replace(/\[([^\]]+)\]\((https?:\/\/[^ )]+)\)/g,(m,t,u)=>safeURL(u)?`<a href="${escapeHTML(u)}" target="_blank" rel="noopener">${t}</a>`:t)}
-function markdown(src){let blocks=[];src=String(src||"").replace(/```([\w+-]*)\n?([\s\S]*?)```/g,(m,l,c)=>{blocks.push([l||"code",c]);return"\n@@C"+(blocks.length-1)+"@@\n"});let out=[],p=[],list=null;const fp=()=>{if(p.length){out.push("<p>"+p.map(inline).join("<br>")+"</p>");p=[]}},cl=()=>{if(list){out.push(list==="ul"?"</ul>":"</ol>");list=null}};for(let line of src.split("\n")){let t=line.trim(),c=t.match(/^@@C(\d+)@@$/);if(c){fp();cl();out.push(t);continue}if(!t){fp();cl();continue}let h=t.match(/^(#{1,3})\s+(.+)$/);if(h){fp();cl();let n=h[1].length;out.push(`<h${n}>${inline(h[2])}</h${n}>`);continue}if(/^---+$/.test(t)){fp();cl();out.push("<hr>");continue}let q=t.match(/^>\s?(.*)$/);if(q){fp();cl();out.push(`<blockquote>${inline(q[1])}</blockquote>`);continue}let u=t.match(/^[-*]\s+(.+)$/),o=t.match(/^\d+[.)]\s+(.+)$/);if(u||o){fp();let typ=u?"ul":"ol";if(list!==typ){cl();out.push(`<${typ}>`);list=typ}out.push(`<li>${inline((u||o)[1])}</li>`);continue}cl();p.push(line)}fp();cl();return out.join("").replace(/@@C(\d+)@@/g,(m,n)=>{let b=blocks[+n];return `<div class="codebox"><div class="codehead"><span>${escapeHTML(b[0])}</span><button type="button" class="copy">Sao chép</button></div><pre class="code">${escapeHTML(b[1])}</pre></div>`})}
-function addMessage(role,content,opts={}){let wrap=document.createElement("article");wrap.className="message "+role;let av=document.createElement("div");av.className="avatar";if(role==="assistant"){let im=document.createElement("img");im.src=LOGO;av.append(im)}else av.textContent="B";let body=document.createElement("div");body.className="bodymsg";let name=document.createElement("div");name.className="name";name.textContent=role==="assistant"?"DKB AI":"Bạn";let text=document.createElement("div");text.className=opts.temporary?"typing":"text";if(opts.temporary)text.textContent=content;else text.innerHTML=role==="assistant"?markdown(content):escapeHTML(content).replace(/\n/g,"<br>");body.append(name,text);if(opts.image){let im=document.createElement("img");im.src=opts.image;im.style.cssText="max-width:220px;max-height:180px;display:block;border-radius:10px;margin-top:8px";body.append(im)}if(role==="assistant"&&!opts.temporary){if(opts.sources?.length){let box=document.createElement("div");box.className="sources";box.innerHTML="<b>Nguồn tham khảo</b>";opts.sources.slice(0,8).forEach(s=>{let u=safeURL(typeof s==="string"?s:s.url||"");if(u){let a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";a.textContent=typeof s==="string"?u:(s.title||u);box.append(a)}});body.append(box)}let actions=document.createElement("div");actions.className="actions";let cp=document.createElement("button");cp.textContent="Sao chép";cp.onclick=()=>copy(content,cp);let rg=document.createElement("button");rg.textContent="Tạo lại";rg.onclick=regenerate;actions.append(cp,rg);body.append(actions)}wrap.append(av,body);$("messages").append(wrap);scroll();return{wrap,text}}
-function scroll(){$("chat").scrollTop=$("chat").scrollHeight}
-function render(){let c=current();$("welcome").hidden=!!c?.messages.length;$("messages").replaceChildren();if(c)c.messages.forEach(m=>addMessage(m.role,typeof m.content==="string"?m.content:"[Ảnh đã gửi]",{sources:m.sources,image:m.image}));$("history").replaceChildren();chats.slice(0,30).forEach(c=>{let b=document.createElement("button");b.textContent=c.title;b.className=c.id===active?"active":"";b.onclick=()=>{if(!busy){active=c.id;render();closeMenu()}};$("history").append(b)})}
-function newChat(){if(busy)return;let c={id:Date.now().toString(36)+Math.random().toString(36).slice(2),title:"Cuộc trò chuyện mới",messages:[]};chats.unshift(c);active=c.id;save();render();closeMenu()}
-function closeMenu(){$("sidebar").classList.remove("open");$("backdrop").classList.remove("show")}
-function setMode(m){mode=m;$("switch").classList.toggle("max",m==="max");$("switch").querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.mode===m));$("modeInfo").textContent=m==="max"?"Max • Ưu tiên câu hỏi phức tạp":"Lite • Phản hồi nhanh, tiết kiệm"}
-function setBusy(v){busy=v;$("send").textContent=v?"■":"↑";$("send").classList.toggle("stop",v)}
-function setSearch(v){search=v;$("search").classList.toggle("active",v);$("search").textContent=(v?"● ":"○ ")+(v?"Tìm kiếm: Bật":"Tìm kiếm: Tắt")}
-function resize(){ $("input").style.height="auto";$("input").style.height=Math.min($("input").scrollHeight,140)+"px"}
-async function ask(chat,display){let payload={messages:chat.messages.map(m=>({role:m.role,content:m.content})),performance:mode,thinkingMode:mode,useSearch:search};let r;try{r=await fetch(STREAM,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:controller.signal})}catch(e){if(e.name==="AbortError")throw e;return fallback(chat,display)}if(!r.ok||!r.body)return fallback(chat,display);let reader=r.body.getReader(),decoder=new TextDecoder(),buf="",answer="",sources=[];function block(raw){let ev="message",data="";raw.split(/\r?\n/).forEach(l=>{if(l.startsWith("event:"))ev=l.slice(6).trim();if(l.startsWith("data:"))data+=l.slice(5).trim()});if(!data)return;let obj;try{obj=JSON.parse(data)}catch{return}if(ev==="token"){answer+=obj.text||obj.token||"";display.text.textContent=answer;scroll()}if(ev==="sources")sources=obj.sources||[];if(ev==="error")throw Error(obj.error||"Lỗi tạo câu trả lời")}while(true){let x=await reader.read();if(x.done)break;buf+=decoder.decode(x.value,{stream:true});let i;while((i=buf.indexOf("\n\n"))>=0){let b=buf.slice(0,i);buf=buf.slice(i+2);block(b)}}if(buf.trim())block(buf);if(!answer.trim())throw Error("Máy chủ không trả về nội dung.");return{reply:answer,sources}}
-async function fallback(chat,display){let r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:chat.messages.map(m=>({role:m.role,content:m.content})),performance:mode,thinkingMode:mode,useSearch:search}),signal:controller.signal});let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.details||d.error||"Lỗi máy chủ "+r.status);if(!d.reply)throw Error("Không có câu trả lời");display.text.textContent=d.reply;return{reply:d.reply,sources:d.sources||[]}}
-async function send(raw){let text=raw.trim();if((!text&&!imageData)||busy)return;if(!current())newChat();let c=current(),img=imageData,content=text||"Hãy phân tích hình ảnh này.";let msg={role:"user",content:img?[{type:"text",text:content},{type:"image_url",image_url:{url:img}}]:content,image:img||null};c.messages.push(msg);if(c.messages.length===1)c.title=(text||"Phân tích hình ảnh").slice(0,38);c.updated=Date.now();save();$("input").value="";resize();imageData=null;$("preview").classList.remove("show");$("imageFile").value="";render();let display=addMessage("assistant","DKB AI đang suy nghĩ…",{temporary:true});setBusy(true);controller=new AbortController();try{let result=await ask(c,display);display.wrap.remove();c.messages.push({role:"assistant",content:result.reply,sources:result.sources});save();addMessage("assistant",result.reply,{sources:result.sources});render()}catch(e){display.text.textContent=e.name==="AbortError"?"Đã dừng tạo câu trả lời.":"Không thể kết nối DKB AI: "+e.message;display.text.className="text"}finally{controller=null;setBusy(false)}}
-function regenerate(){if(busy)return;let c=current();if(!c||c.messages.length<2)return;if(c.messages.at(-1).role==="assistant")c.messages.pop();if(c.messages.at(-1)?.role!=="user")return;let u=c.messages.pop();let text=typeof u.content==="string"?u.content:"Hãy phân tích hình ảnh tôi đã gửi.";imageData=u.image||null;save();render();send(text)}
-async function copy(t,b){try{await navigator.clipboard.writeText(t);b.textContent="Đã sao chép";setTimeout(()=>b.textContent="Sao chép",1200)}catch{b.textContent="Lỗi sao chép"}}
-function exportChat(){let c=current();if(!c?.messages.length)return alert("Chưa có nội dung.");let t=c.messages.map(m=>(m.role==="user"?"Bạn":"DKB AI")+":\n"+(typeof m.content==="string"?m.content:"[Ảnh đính kèm]")).join("\n\n");let a=document.createElement("a"),u=URL.createObjectURL(new Blob([t],{type:"text/plain;charset=utf-8"}));a.href=u;a.download="dkb-ai-chat.txt";a.click();URL.revokeObjectURL(u)}
-function imageURL(file){return new Promise((resolve,reject)=>{let url=URL.createObjectURL(file),im=new Image();im.onload=()=>{let scale=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*scale;c.height=im.height*scale;c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL("image/jpeg",.82))};im.onerror=reject;im.src=url})}
-$("form").onsubmit=e=>{e.preventDefault();if(busy){controller?.abort();return}send($("input").value)};
-$("input").addEventListener("input",resize);$("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("form").requestSubmit()}});
-$("newChat").onclick=newChat;$("menu").onclick=()=>$("sidebar").classList.add("open");$("backdrop").onclick=closeMenu;$("search").onclick=()=>setSearch(!search);$("switch").querySelectorAll("button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
-$("theme").onclick=()=>{document.body.classList.toggle("dark");localStorage.setItem("dkb_ai_theme",document.body.classList.contains("dark")?"dark":"light");$("theme").textContent=document.body.classList.contains("dark")?"☀":"☾"};
-$("clear").onclick=()=>{let c=current();if(!c?.messages.length)return;if(confirm("Xóa cuộc trò chuyện này?")){c.messages=[];c.title="Cuộc trò chuyện mới";save();render()}};
+
+let chats=load();
+let active=chats[0]?.id||null;
+let search=true;
+let mode="lite";
+let performanceValue=1;
+let busy=false;
+let controller=null;
+let imageData=null;
+let recorder=null;
+let chunks=[];
+
+function load(){
+  try{return JSON.parse(localStorage.getItem("dkb_ai_chats")||"[]")}
+  catch{return[]}
+}
+
+function save(){
+  try{
+    localStorage.setItem("dkb_ai_chats",JSON.stringify(chats.slice(0,30)));
+  }catch{
+    console.warn("Không thể lưu lịch sử chat.");
+  }
+}
+
+function current(){
+  return chats.find(c=>c.id===active);
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g,c=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[c]));
+}
+
+function safeURL(s){
+  try{
+    let u=new URL(s);
+    return["https:","http:"].includes(u.protocol)?u.href:null;
+  }catch{return null}
+}
+
+function inline(s){
+  let h=escapeHTML(s);
+  h=h.replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
+    .replace(/\*(.+?)\*/g,"<i>$1</i>")
+    .replace(/~~(.+?)~~/g,"<del>$1</del>");
+
+  return h.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^ )]+)\)/g,
+    (m,t,u)=>safeURL(u)
+      ?`<a href="${escapeHTML(u)}" target="_blank" rel="noopener">${t}</a>`
+      :t
+  );
+}
+
+function markdown(src){
+  let blocks=[];
+
+  src=String(src||"").replace(
+    /```([\w+-]*)\n?([\s\S]*?)```/g,
+    (m,l,c)=>{
+      blocks.push([l||"code",c]);
+      return"\n@@C"+(blocks.length-1)+"@@\n";
+    }
+  );
+
+  let out=[],p=[],list=null;
+
+  const fp=()=>{
+    if(p.length){
+      out.push("<p>"+p.map(inline).join("<br>")+"</p>");
+      p=[];
+    }
+  };
+
+  const cl=()=>{
+    if(list){
+      out.push(list==="ul"?"</ul>":"</ol>");
+      list=null;
+    }
+  };
+
+  for(let line of src.split("\n")){
+    let t=line.trim();
+    let c=t.match(/^@@C(\d+)@@$/);
+
+    if(c){fp();cl();out.push(t);continue}
+    if(!t){fp();cl();continue}
+
+    let h=t.match(/^(#{1,3})\s+(.+)$/);
+
+    if(h){
+      fp();cl();
+      let n=h[1].length;
+      out.push(`<h${n}>${inline(h[2])}</h${n}>`);
+      continue;
+    }
+
+    if(/^---+$/.test(t)){
+      fp();cl();out.push("<hr>");continue;
+    }
+
+    let q=t.match(/^>\s?(.*)$/);
+
+    if(q){
+      fp();cl();
+      out.push(`<blockquote>${inline(q[1])}</blockquote>`);
+      continue;
+    }
+
+    let u=t.match(/^[-*]\s+(.+)$/);
+    let o=t.match(/^\d+[.)]\s+(.+)$/);
+
+    if(u||o){
+      fp();
+      let typ=u?"ul":"ol";
+
+      if(list!==typ){
+        cl();
+        out.push(`<${typ}>`);
+        list=typ;
+      }
+
+      out.push(`<li>${inline((u||o)[1])}</li>`);
+      continue;
+    }
+
+    cl();
+    p.push(line);
+  }
+
+  fp();
+  cl();
+
+  return out.join("").replace(/@@C(\d+)@@/g,(m,n)=>{
+    let b=blocks[+n];
+
+    return `<div class="codebox">
+      <div class="codehead">
+        <span>${escapeHTML(b[0])}</span>
+        <button type="button" class="copy">Sao chép</button>
+      </div>
+      <pre class="code">${escapeHTML(b[1])}</pre>
+    </div>`;
+  });
+}
+
+function addMessage(role,content,opts={}){
+  let wrap=document.createElement("article");
+  wrap.className="message "+role;
+
+  let av=document.createElement("div");
+  av.className="avatar";
+
+  if(role==="assistant"){
+    let im=document.createElement("img");
+    im.src=LOGO;
+    av.append(im);
+  }else{
+    av.textContent="B";
+  }
+
+  let body=document.createElement("div");
+  body.className="bodymsg";
+
+  let name=document.createElement("div");
+  name.className="name";
+  name.textContent=role==="assistant"?"DKB AI":"Bạn";
+
+  let text=document.createElement("div");
+  text.className=opts.temporary?"typing":"text";
+
+  if(opts.temporary){
+    text.textContent=content;
+  }else{
+    text.innerHTML=role==="assistant"
+      ?markdown(content)
+      :escapeHTML(content).replace(/\n/g,"<br>");
+  }
+
+  body.append(name,text);
+
+  if(opts.image){
+    let box=document.createElement("div");
+    box.className="image-result";
+
+    let im=document.createElement("img");
+    im.src=opts.image;
+    im.alt="Ảnh được tạo bởi DKB AI";
+
+    let download=document.createElement("button");
+    download.type="button";
+    download.textContent="↓ Tải ảnh xuống";
+
+    download.onclick=()=>{
+      let a=document.createElement("a");
+      a.href=opts.image;
+      a.download="dkb-ai-image.png";
+      a.click();
+    };
+
+    box.append(im,download);
+    body.append(box);
+  }
+
+  if(role==="assistant"&&!opts.temporary){
+    if(opts.sources?.length){
+      let box=document.createElement("div");
+      box.className="sources";
+      box.innerHTML="<b>Nguồn tham khảo</b>";
+
+      opts.sources.slice(0,8).forEach(s=>{
+        let u=safeURL(typeof s==="string"?s:s.url||"");
+
+        if(u){
+          let a=document.createElement("a");
+          a.href=u;
+          a.target="_blank";
+          a.rel="noopener";
+          a.textContent=typeof s==="string"?u:(s.title||u);
+          box.append(a);
+        }
+      });
+
+      body.append(box);
+    }
+
+    let actions=document.createElement("div");
+    actions.className="actions";
+
+    let cp=document.createElement("button");
+    cp.textContent="Sao chép";
+    cp.onclick=()=>copy(content,cp);
+
+    let rg=document.createElement("button");
+    rg.textContent="Tạo lại";
+    rg.onclick=regenerate;
+
+    actions.append(cp,rg);
+    body.append(actions);
+  }
+
+  wrap.append(av,body);
+  $("messages").append(wrap);
+  scroll();
+
+  return{wrap,text};
+}
+
+function scroll(){
+  $("chat").scrollTop=$("chat").scrollHeight;
+}
+
+function render(){
+  let c=current();
+
+  $("welcome").hidden=!!c?.messages.length;
+  $("messages").replaceChildren();
+
+  if(c){
+    c.messages.forEach(m=>{
+      addMessage(
+        m.role,
+        typeof m.content==="string"?m.content:"[Ảnh đã gửi]",
+        {sources:m.sources,image:m.image}
+      );
+    });
+  }
+
+  $("history").replaceChildren();
+
+  chats.slice(0,30).forEach(c=>{
+    let b=document.createElement("button");
+    b.textContent=c.title;
+    b.className=c.id===active?"active":"";
+
+    b.onclick=()=>{
+      if(!busy){
+        active=c.id;
+        render();
+        closeMenu();
+      }
+    };
+
+    $("history").append(b);
+  });
+}
+
+function newChat(){
+  if(busy)return;
+
+  let c={
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2),
+    title:"Cuộc trò chuyện mới",
+    messages:[]
+  };
+
+  chats.unshift(c);
+  active=c.id;
+  save();
+  render();
+  closeMenu();
+}
+
+function closeMenu(){
+  $("sidebar").classList.remove("open");
+  $("backdrop").classList.remove("show");
+}
+
+function setPerformance(value){
+  performanceValue=Number(value);
+
+  // Lite: 1-49, Max: 50-100
+  mode=performanceValue>=50?"max":"lite";
+
+  $("performanceRange").value=performanceValue;
+  $("performanceTitle").textContent=mode==="max"?"Max":"Lite";
+
+  $("performanceDescription").textContent=
+    mode==="max"
+      ?"Mức "+performanceValue+" · Ưu tiên suy luận"
+      :"Mức "+performanceValue+" · Phản hồi nhanh";
+}
+
+function setBusy(v){
+  busy=v;
+  $("send").textContent=v?"■":"↑";
+  $("send").classList.toggle("stop",v);
+}
+
+function setSearch(v){
+  search=v;
+  $("search").classList.toggle("active",v);
+  $("search").textContent=(v?"● ":"○ ")+(v?"Tìm kiếm: Bật":"Tìm kiếm: Tắt");
+}
+
+function resize(){
+  $("input").style.height="auto";
+  $("input").style.height=Math.min($("input").scrollHeight,140)+"px";
+}
+
+/* ===== GỬI TIN NHẮN ===== */
+
+async function ask(chat,display){
+  let payload={
+    messages:chat.messages.map(m=>({
+      role:m.role,
+      content:m.content
+    })),
+    mode:mode,
+    performance:performanceValue,
+    useSearch:search
+  };
+
+  let r;
+
+  try{
+    r=await fetch(STREAM,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload),
+      signal:controller.signal
+    });
+  }catch(e){
+    if(e.name==="AbortError")throw e;
+    return fallback(chat,display);
+  }
+
+  if(!r.ok||!r.body){
+    return fallback(chat,display);
+  }
+
+  let reader=r.body.getReader();
+  let decoder=new TextDecoder();
+  let buf="";
+  let answer="";
+  let sources=[];
+
+  function block(raw){
+    let ev="message",data="";
+
+    raw.split(/\r?\n/).forEach(l=>{
+      if(l.startsWith("event:"))ev=l.slice(6).trim();
+      if(l.startsWith("data:"))data+=l.slice(5).trim();
+    });
+
+    if(!data)return;
+
+    let obj;
+
+    try{obj=JSON.parse(data)}
+    catch{return}
+
+    if(ev==="token"){
+      answer+=obj.text||obj.token||"";
+      display.text.textContent=answer;
+      scroll();
+    }
+
+    if(ev==="sources"){
+      sources=obj.sources||[];
+    }
+
+    if(ev==="error"){
+      throw Error(obj.error||"Lỗi tạo câu trả lời");
+    }
+  }
+
+  while(true){
+    let x=await reader.read();
+    if(x.done)break;
+
+    buf+=decoder.decode(x.value,{stream:true});
+
+    let i;
+
+    while((i=buf.indexOf("\n\n"))>=0){
+      let b=buf.slice(0,i);
+      buf=buf.slice(i+2);
+      block(b);
+    }
+  }
+
+  if(buf.trim())block(buf);
+
+  if(!answer.trim()){
+    throw Error("Máy chủ không trả về nội dung.");
+  }
+
+  return{reply:answer,sources};
+}
+
+async function fallback(chat,display){
+  let r=await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      messages:chat.messages.map(m=>({
+        role:m.role,
+        content:m.content
+      })),
+      mode:mode,
+      performance:performanceValue,
+      useSearch:search
+    }),
+    signal:controller.signal
+  });
+
+  let d=await r.json().catch(()=>({}));
+
+  if(!r.ok)throw Error(d.details||d.error||"Lỗi máy chủ "+r.status);
+  if(!d.reply)throw Error("Không có câu trả lời");
+
+  display.text.textContent=d.reply;
+
+  return{reply:d.reply,sources:d.sources||[]};
+}
+
+async function send(raw){
+  let text=raw.trim();
+
+  if((!text&&!imageData)||busy)return;
+
+  if(!current())newChat();
+
+  let c=current();
+  let img=imageData;
+  let content=text||"Hãy phân tích hình ảnh này.";
+
+  let msg={
+    role:"user",
+    content:img
+      ?[
+        {type:"text",text:content},
+        {type:"image_url",image_url:{url:img}}
+      ]
+      :content,
+    image:img||null
+  };
+
+  c.messages.push(msg);
+
+  if(c.messages.length===1){
+    c.title=(text||"Phân tích hình ảnh").slice(0,38);
+  }
+
+  c.updated=Date.now();
+  save();
+
+  $("input").value="";
+  resize();
+
+  imageData=null;
+  $("preview").classList.remove("show");
+  $("imageFile").value="";
+
+  render();
+
+  let display=addMessage(
+    "assistant",
+    "DKB AI đang suy nghĩ…",
+    {temporary:true}
+  );
+
+  setBusy(true);
+  controller=new AbortController();
+
+  try{
+    let result=await ask(c,display);
+
+    display.wrap.remove();
+
+    c.messages.push({
+      role:"assistant",
+      content:result.reply,
+      sources:result.sources
+    });
+
+    save();
+    addMessage("assistant",result.reply,{sources:result.sources});
+    render();
+
+  }catch(e){
+    display.text.textContent=
+      e.name==="AbortError"
+        ?"Đã dừng tạo câu trả lời."
+        :"Không thể kết nối DKB AI: "+e.message;
+
+    display.text.className="text";
+
+  }finally{
+    controller=null;
+    setBusy(false);
+  }
+}
+
+function regenerate(){
+  if(busy)return;
+
+  let c=current();
+
+  if(!c||c.messages.length<2)return;
+
+  if(c.messages.at(-1).role==="assistant"){
+    c.messages.pop();
+  }
+
+  if(c.messages.at(-1)?.role!=="user")return;
+
+  let u=c.messages.pop();
+
+  let text=typeof u.content==="string"
+    ?u.content
+    :"Hãy phân tích hình ảnh tôi đã gửi.";
+
+  imageData=u.image||null;
+
+  save();
+  render();
+  send(text);
+}
+
+async function copy(t,b){
+  try{
+    await navigator.clipboard.writeText(t);
+    b.textContent="Đã sao chép";
+    setTimeout(()=>b.textContent="Sao chép",1200);
+  }catch{
+    b.textContent="Lỗi sao chép";
+  }
+}
+
+function exportChat(){
+  let c=current();
+
+  if(!c?.messages.length)return alert("Chưa có nội dung.");
+
+  let t=c.messages.map(m=>
+    (m.role==="user"?"Bạn":"DKB AI")+":\n"+
+    (typeof m.content==="string"?m.content:"[Ảnh đính kèm]")
+  ).join("\n\n");
+
+  let a=document.createElement("a");
+  let u=URL.createObjectURL(
+    new Blob([t],{type:"text/plain;charset=utf-8"})
+  );
+
+  a.href=u;
+  a.download="dkb-ai-chat.txt";
+  a.click();
+
+  URL.revokeObjectURL(u);
+}
+
+/* ===== TẢI ẢNH LÊN ===== */
+
+function imageURL(file){
+  return new Promise((resolve,reject)=>{
+    let url=URL.createObjectURL(file);
+    let im=new Image();
+
+    im.onload=()=>{
+      let scale=Math.min(1,1600/Math.max(im.width,im.height));
+      let c=document.createElement("canvas");
+
+      c.width=im.width*scale;
+      c.height=im.height*scale;
+
+      c.getContext("2d").drawImage(
+        im,0,0,c.width,c.height
+      );
+
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg",.82));
+    };
+
+    im.onerror=reject;
+    im.src=url;
+  });
+}
+
+/* ===== HIỆU SUẤT AI ===== */
+
+$("performanceButton").onclick=()=>{
+  const panel=$("performancePanel");
+
+  panel.classList.toggle("show");
+  $("imagePanel").classList.remove("show");
+
+  $("performanceButton").classList.toggle(
+    "active",
+    panel.classList.contains("show")
+  );
+
+  $("imageButton").classList.remove("active");
+};
+
+$("performanceRange").oninput=e=>{
+  setPerformance(e.target.value);
+};
+
+/* ===== BẢNG TẠO ẢNH ===== */
+
+$("imageButton").onclick=()=>{
+  const panel=$("imagePanel");
+
+  panel.classList.toggle("show");
+  $("performancePanel").classList.remove("show");
+
+  $("imageButton").classList.toggle(
+    "active",
+    panel.classList.contains("show")
+  );
+
+  $("performanceButton").classList.remove("active");
+};
+
+/* ===== GỬI YÊU CẦU TẠO ẢNH ===== */
+
+async function generateImage(){
+  const prompt=$("imagePrompt").value.trim();
+
+  if(!prompt){
+    alert("Hãy nhập mô tả hình ảnh trước.");
+    $("imagePrompt").focus();
+    return;
+  }
+
+  const button=$("generateImageBtn");
+
+  button.disabled=true;
+  button.textContent="Đang tạo ảnh...";
+
+  try{
+    const response=await fetch(IMAGE_API,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        prompt:prompt,
+        aspect_ratio:$("imageAspect").value
+      })
+    });
+
+    const data=await response.json();
+
+    if(!response.ok||!data.success||!data.image){
+      throw Error(data.error||"Không thể tạo ảnh.");
+    }
+
+    if(!current()){
+      let c={
+        id:Date.now().toString(36)+Math.random().toString(36).slice(2),
+        title:"Tạo ảnh mới",
+        messages:[]
+      };
+
+      chats.unshift(c);
+      active=c.id;
+    }
+
+    const chat=current();
+
+    chat.messages.push({
+      role:"user",
+      content:"Tạo ảnh: "+prompt
+    });
+
+    chat.messages.push({
+      role:"assistant",
+      content:"Đã tạo ảnh thành công!",
+      image:data.image
+    });
+
+    if(chat.messages.length===2){
+      chat.title=("Tạo ảnh: "+prompt).slice(0,38);
+    }
+
+    save();
+
+    $("imagePrompt").value="";
+    $("imagePanel").classList.remove("show");
+    $("imageButton").classList.remove("active");
+
+    render();
+    scroll();
+
+  }catch(error){
+    alert("Lỗi tạo ảnh: "+error.message);
+  }finally{
+    button.disabled=false;
+    button.textContent="✦ Tạo ảnh";
+  }
+}
+
+$("generateImageBtn").onclick=generateImage;
+
+/* ===== ĐÓNG POPUP KHI NHẤN RA NGOÀI ===== */
+
+document.addEventListener("click",e=>{
+  if(
+    !e.target.closest("#performancePanel")&&
+    !e.target.closest("#performanceButton")
+  ){
+    $("performancePanel").classList.remove("show");
+    $("performanceButton").classList.remove("active");
+  }
+
+  if(
+    !e.target.closest("#imagePanel")&&
+    !e.target.closest("#imageButton")
+  ){
+    $("imagePanel").classList.remove("show");
+    $("imageButton").classList.remove("active");
+  }
+});
+
+/* ===== CÁC SỰ KIỆN GIAO DIỆN ===== */
+
+$("form").onsubmit=e=>{
+  e.preventDefault();
+
+  if(busy){
+    controller?.abort();
+    return;
+  }
+
+  send($("input").value);
+};
+
+$("input").addEventListener("input",resize);
+
+$("input").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){
+    e.preventDefault();
+    $("form").requestSubmit();
+  }
+});
+
+$("newChat").onclick=newChat;
+
+$("menu").onclick=()=>{
+  $("sidebar").classList.add("open");
+  $("backdrop").classList.add("show");
+};
+
+$("backdrop").onclick=closeMenu;
+
+$("search").onclick=()=>setSearch(!search);
+
+$("theme").onclick=()=>{
+  document.body.classList.toggle("dark");
+
+  localStorage.setItem(
+    "dkb_ai_theme",
+    document.body.classList.contains("dark")?"dark":"light"
+  );
+
+  $("theme").textContent=
+    document.body.classList.contains("dark")?"☀":"☾";
+};
+
+$("clear").onclick=()=>{
+  let c=current();
+
+  if(!c?.messages.length)return;
+
+  if(confirm("Xóa cuộc trò chuyện này?")){
+    c.messages=[];
+    c.title="Cuộc trò chuyện mới";
+    save();
+    render();
+  }
+};
+
 $("export").onclick=exportChat;
-$("addImage").onclick=()=>$("imageFile").click();
-$("imageFile").onchange=async e=>{let f=e.target.files[0];if(!f)return;if(f.size>12*1024*1024){alert("Ảnh phải nhỏ hơn 12 MB.");return}try{imageData=await imageURL(f);$("previewImg").src=imageData;$("previewName").textContent=f.name;$("preview").classList.add("show")}catch{alert("Không đọc được ảnh.")}};
-$("removeImage").onclick=()=>{imageData=null;$("preview").classList.remove("show");$("imageFile").value=""};
-$("voice").onclick=async()=>{if(recorder?.state==="recording"){recorder.stop();$("voice").textContent="Đang xử lý…";return}if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)return alert("Trình duyệt chưa hỗ trợ ghi âm.");try{let stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];recorder=new MediaRecorder(stream);recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());try{let blob=new Blob(chunks,{type:recorder.mimeType||"audio/webm"}),base64=await new Promise((res,rej)=>{let r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(blob)}),response=await fetch(TRANSCRIBE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({audioBase64:base64,mimeType:blob.type,language:"vi"})}),data=await response.json();if(!response.ok)throw Error(data.details||data.error||"Lỗi chuyển giọng nói");$("input").value+=($("input").value?" ":"")+(data.text||data.transcript||"");resize()}catch(e){alert(e.message)}$("voice").textContent="◉ Giọng nói"};recorder.start();$("voice").textContent="■ Dừng ghi âm"}catch(e){alert("Không mở được micro: "+e.message)}};
-document.addEventListener("click",e=>{let b=e.target.closest(".copy");if(b)copy(b.closest(".codebox").querySelector(".code").textContent,b)});
-document.querySelectorAll(".suggestion").forEach(b=>b.onclick=()=>send(b.dataset.prompt));
-if(localStorage.getItem("dkb_ai_theme")==="dark"){document.body.classList.add("dark");$("theme").textContent="☀"}
-setMode("lite");setSearch(true);render();
-fetch("/api/health").then(r=>{if(!r.ok)throw Error();$("health").textContent="Máy chủ đã kết nối"}).catch(()=>$("health").textContent="Chưa kết nối máy chủ");
+
+$("addImage").onclick=()=>{
+  $("imageFile").click();
+};
+
+$("imageFile").onchange=async e=>{
+  let f=e.target.files[0];
+
+  if(!f)return;
+
+  if(f.size>12*1024*1024){
+    alert("Ảnh phải nhỏ hơn 12 MB.");
+    return;
+  }
+
+  try{
+    imageData=await imageURL(f);
+    $("previewImg").src=imageData;
+    $("previewName").textContent=f.name;
+    $("preview").classList.add("show");
+  }catch{
+    alert("Không đọc được ảnh.");
+  }
+};
+
+$("removeImage").onclick=()=>{
+  imageData=null;
+  $("preview").classList.remove("show");
+  $("imageFile").value="";
+};
+
+/* ===== GHI ÂM ===== */
+
+$("voice").onclick=async()=>{
+  if(recorder?.state==="recording"){
+    recorder.stop();
+    $("voice").textContent="Đang xử lý…";
+    return;
+  }
+
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
+    return alert("Trình duyệt chưa hỗ trợ ghi âm.");
+  }
+
+  try{
+    let stream=await navigator.mediaDevices.getUserMedia({audio:true});
+
+    chunks=[];
+    recorder=new MediaRecorder(stream);
+
+    recorder.ondataavailable=e=>{
+      if(e.data.size)chunks.push(e.data);
+    };
+
+    recorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+
+      try{
+        let blob=new Blob(chunks,{
+          type:recorder.mimeType||"audio/webm"
+        });
+
+        let base64=await new Promise((res,rej)=>{
+          let r=new FileReader();
+
+          r.onload=()=>res(r.result.split(",")[1]);
+          r.onerror=rej;
+          r.readAsDataURL(blob);
+        });
+
+        let response=await fetch(TRANSCRIBE,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            audio:base64,
+            mimeType:blob.type
+          })
+        });
+
+        let data=await response.json();
+
+        if(!response.ok){
+          throw Error(data.details||data.error||"Lỗi chuyển giọng nói");
+        }
+
+        $("input").value+=
+          ($("input").value?" ":"")+(data.text||data.transcript||"");
+
+        resize();
+
+      }catch(e){
+        alert(e.message);
+      }
+
+      $("voice").textContent="◉ Giọng nói";
+    };
+
+    recorder.start();
+    $("voice").textContent="■ Dừng ghi âm";
+
+  }catch(e){
+    alert("Không mở được micro: "+e.message);
+  }
+};
+
+/* ===== SAO CHÉP CODE ===== */
+
+document.addEventListener("click",e=>{
+  let b=e.target.closest(".copy");
+
+  if(b){
+    copy(
+      b.closest(".codebox").querySelector(".code").textContent,
+      b
+    );
+  }
+});
+
+document.querySelectorAll(".suggestion").forEach(b=>{
+  b.onclick=()=>send(b.dataset.prompt);
+});
+
+/* ===== KHỞI ĐỘNG ===== */
+
+if(localStorage.getItem("dkb_ai_theme")==="dark"){
+  document.body.classList.add("dark");
+  $("theme").textContent="☀";
+}
+
+setPerformance(1);
+setSearch(true);
+render();
+
+fetch("/api/health")
+.then(r=>{
+  if(!r.ok)throw Error();
+  $("health").textContent="Máy chủ đã kết nối";
+})
+.catch(()=>{
+  $("health").textContent="Chưa kết nối máy chủ";
+});
 </script>
 </body>
 </html>
