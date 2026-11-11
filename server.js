@@ -8,11 +8,14 @@ const PORT = process.env.PORT || 10000;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
 
-const MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+const MODEL =
+  process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+
 const VISION_MODEL =
   process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
 
 const GROQ_URL = "https://api.groq.com/openai/v1";
+
 const STABILITY_URL =
   "https://api.stability.ai/v2beta/stable-image/generate/core";
 
@@ -21,9 +24,9 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "30mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ================================
+// ======================================
 // SYSTEM PROMPT
-// ================================
+// ======================================
 
 const SYSTEM_PROMPT = `
 Bạn là DKB AI, trợ lý trí tuệ nhân tạo của website DKB AI.
@@ -33,7 +36,7 @@ Model hiển thị: dkb.flash.lite
 
 Hãy:
 - Trả lời bằng tiếng Việt khi người dùng sử dụng tiếng Việt.
-- Trả lời rõ ràng, chính xác, hữu ích.
+- Trả lời rõ ràng, chính xác và hữu ích.
 - Không tự bịa thông tin khi không biết.
 - Trình bày code đầy đủ khi được yêu cầu.
 - Sử dụng Markdown khi cần thiết.
@@ -41,9 +44,9 @@ Hãy:
 - Luôn giữ thái độ lịch sự và chuyên nghiệp.
 `;
 
-// ================================
+// ======================================
 // HELPERS
-// ================================
+// ======================================
 
 function sendError(res, status, message) {
   return res.status(status).json({
@@ -54,7 +57,9 @@ function sendError(res, status, message) {
 
 function containsImage(messages) {
   return messages.some(message => {
-    if (!Array.isArray(message.content)) return false;
+    if (!Array.isArray(message.content)) {
+      return false;
+    }
 
     return message.content.some(item =>
       item &&
@@ -78,7 +83,11 @@ function normalizeMessages(messages) {
       throw new Error("Tin nhắn không hợp lệ.");
     }
 
-    const role = ["user", "assistant", "system"].includes(message.role)
+    const role = [
+      "user",
+      "assistant",
+      "system"
+    ].includes(message.role)
       ? message.role
       : "user";
 
@@ -120,7 +129,9 @@ function normalizeMessages(messages) {
           };
         }
 
-        throw new Error("Loại nội dung chưa được hỗ trợ.");
+        throw new Error(
+          "Loại nội dung chưa được hỗ trợ."
+        );
       });
 
       return {
@@ -129,7 +140,9 @@ function normalizeMessages(messages) {
       };
     }
 
-    throw new Error("Định dạng nội dung không hợp lệ.");
+    throw new Error(
+      "Định dạng nội dung không hợp lệ."
+    );
   });
 }
 
@@ -151,7 +164,9 @@ function buildMessages(messages) {
 }
 
 function getModel(messages) {
-  return containsImage(messages) ? VISION_MODEL : MODEL;
+  return containsImage(messages)
+    ? VISION_MODEL
+    : MODEL;
 }
 
 function getMaxTokens(mode) {
@@ -162,17 +177,22 @@ function getReasoningEffort(mode) {
   return mode === "max" ? "high" : "low";
 }
 
-// ================================
+// ======================================
 // GROQ REQUEST
-// ================================
+// ======================================
 
 async function groqRequest(body, timeout = 90000) {
   if (!GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY chưa được cấu hình trên Render.");
+    throw new Error(
+      "GROQ_API_KEY chưa được cấu hình trên Render."
+    );
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
+
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeout);
 
   try {
     const response = await fetch(
@@ -200,33 +220,45 @@ async function groqRequest(body, timeout = 90000) {
     }
 
     return data;
+
   } finally {
     clearTimeout(timer);
   }
 }
 
-// ================================
+// ======================================
 // HEALTH CHECK
-// ================================
+// ======================================
 
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     name: "DKB AI",
+    status: "online",
     model: "dkb.flash.lite",
-    textProvider: "Groq",
+    provider: "Groq API",
+    providerModel: MODEL,
+    visionModel: VISION_MODEL,
     imageProvider: "Stability AI",
+    imageModel: "Stable Image Core",
     groqConfigured: Boolean(GROQ_API_KEY),
     imageConfigured: Boolean(STABILITY_API_KEY),
-    time: new Date().toLocaleString("vi-VN", {
-      timeZone: "Asia/Ho_Chi_Minh"
-    })
+    search: false,
+    imageSupport: true,
+    audioTranscription: true,
+    thinkingModes: ["lite", "max"],
+    currentDateTime: new Date().toLocaleString(
+      "vi-VN",
+      {
+        timeZone: "Asia/Ho_Chi_Minh"
+      }
+    )
   });
 });
 
-// ================================
+// ======================================
 // CHAT API
-// ================================
+// ======================================
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -247,7 +279,8 @@ app.post("/api/chat", async (req, res) => {
     };
 
     if (model.includes("gpt-oss")) {
-      body.reasoning_effort = getReasoningEffort(mode);
+      body.reasoning_effort =
+        getReasoningEffort(mode);
     }
 
     const data = await groqRequest(body);
@@ -273,12 +306,13 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ================================
+// ======================================
 // STREAMING CHAT API
-// ================================
+// ======================================
 
 app.post("/api/chat-stream", async (req, res) => {
   let controller;
+  let timer;
 
   try {
     const {
@@ -306,12 +340,13 @@ app.post("/api/chat-stream", async (req, res) => {
     };
 
     if (model.includes("gpt-oss")) {
-      body.reasoning_effort = getReasoningEffort(mode);
+      body.reasoning_effort =
+        getReasoningEffort(mode);
     }
 
     controller = new AbortController();
 
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       controller.abort();
     }, 90000);
 
@@ -329,8 +364,6 @@ app.post("/api/chat-stream", async (req, res) => {
     );
 
     if (!upstream.ok) {
-      clearTimeout(timer);
-
       const errorData = await upstream.json().catch(() => ({}));
 
       return sendError(
@@ -341,10 +374,25 @@ app.post("/api/chat-stream", async (req, res) => {
       );
     }
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream"
+    );
+
+    res.setHeader(
+      "Cache-Control",
+      "no-cache"
+    );
+
+    res.setHeader(
+      "Connection",
+      "keep-alive"
+    );
+
+    res.setHeader(
+      "X-Accel-Buffering",
+      "no"
+    );
 
     res.flushHeaders?.();
 
@@ -373,13 +421,17 @@ app.post("/api/chat-stream", async (req, res) => {
       for (const line of lines) {
         const trimmed = line.trim();
 
-        if (!trimmed.startsWith("data:")) continue;
+        if (!trimmed.startsWith("data:")) {
+          continue;
+        }
 
         const raw = trimmed.slice(5).trim();
 
         if (raw === "[DONE]") {
           res.write("event: done\n");
-          res.write('data: {"success":true}\n\n');
+          res.write(
+            'data: {"success":true}\n\n'
+          );
           continue;
         }
 
@@ -389,14 +441,21 @@ app.post("/api/chat-stream", async (req, res) => {
           const token =
             parsed?.choices?.[0]?.delta?.content;
 
-          if (typeof token === "string" && token.length) {
+          if (
+            typeof token === "string" &&
+            token.length
+          ) {
             res.write("event: token\n");
+
             res.write(
-              `data: ${JSON.stringify({ text: token })}\n\n`
+              `data: ${JSON.stringify({
+                text: token
+              })}\n\n`
             );
           }
+
         } catch {
-          // Bỏ qua chunk không hợp lệ
+          // Bỏ qua chunk không hợp lệ.
         }
       }
     }
@@ -405,39 +464,53 @@ app.post("/api/chat-stream", async (req, res) => {
 
     if (!res.writableEnded) {
       res.write("event: done\n");
-      res.write('data: {"success":true}\n\n');
+      res.write(
+        'data: {"success":true}\n\n'
+      );
       res.end();
     }
 
   } catch (error) {
     console.error("STREAM ERROR:", error);
 
+    clearTimeout(timer);
+
     if (!res.headersSent) {
       return sendError(
         res,
         500,
-        error.message || "Lỗi khi tạo câu trả lời."
+        error.message ||
+          "Lỗi khi tạo câu trả lời."
       );
     }
 
     if (!res.writableEnded) {
       res.write("event: error\n");
+
       res.write(
         `data: ${JSON.stringify({
           error: error.message || "Lỗi kết nối."
         })}\n\n`
       );
+
       res.end();
     }
+
+  } finally {
+    clearTimeout(timer);
   }
 });
 
-// ================================
+// ======================================
 // IMAGE GENERATION API
 // STABILITY AI - STABLE IMAGE CORE
-// ================================
+// ======================================
 
 app.post("/api/generate-image", async (req, res) => {
+  let timer;
+
+  const controller = new AbortController();
+
   try {
     if (!STABILITY_API_KEY) {
       return sendError(
@@ -447,9 +520,11 @@ app.post("/api/generate-image", async (req, res) => {
       );
     }
 
-    const prompt = String(req.body?.prompt || "").trim();
+    const originalPrompt = String(
+      req.body?.prompt || ""
+    ).trim();
 
-    if (!prompt) {
+    if (!originalPrompt) {
       return sendError(
         res,
         400,
@@ -457,7 +532,7 @@ app.post("/api/generate-image", async (req, res) => {
       );
     }
 
-    if (prompt.length > 3000) {
+    if (originalPrompt.length > 3000) {
       return sendError(
         res,
         400,
@@ -465,7 +540,7 @@ app.post("/api/generate-image", async (req, res) => {
       );
     }
 
-    const aspectRatio = [
+    const allowedRatios = [
       "1:1",
       "16:9",
       "9:16",
@@ -474,26 +549,45 @@ app.post("/api/generate-image", async (req, res) => {
       "3:2",
       "2:3",
       "21:9"
-    ].includes(req.body?.aspect_ratio)
+    ];
+
+    const aspectRatio = allowedRatios.includes(
+      req.body?.aspect_ratio
+    )
       ? req.body.aspect_ratio
       : "1:1";
 
+    // Cải thiện độ trung thành với mô tả gốc.
+    // Không tự ý đổi địa điểm hoặc chủ thể.
+
+    const finalPrompt = [
+      "Create one image based on the following description.",
+      "Follow the user's original scene and intention closely.",
+      "Preserve the requested subject, location, environment,",
+      "time of day, objects, composition and visual details.",
+      "Do not replace the requested location with another location.",
+      "Do not change an outdoor scene into an indoor scene.",
+      "Do not invent unrelated objects or environments.",
+      "When details are unspecified, use natural visual choices",
+      "that remain consistent with the original request.",
+      "",
+      "Original user description:",
+      originalPrompt
+    ].join(" ");
+
     const form = new FormData();
 
-    form.append("prompt", prompt);
+    form.append("prompt", finalPrompt);
     form.append("output_format", "png");
     form.append("aspect_ratio", aspectRatio);
 
-    const controller = new AbortController();
-
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       controller.abort();
     }, 120000);
 
-    let response;
-
-    try {
-      response = await fetch(STABILITY_URL, {
+    const response = await fetch(
+      STABILITY_URL,
+      {
         method: "POST",
         headers: {
           Authorization: `Bearer ${STABILITY_API_KEY}`,
@@ -501,46 +595,60 @@ app.post("/api/generate-image", async (req, res) => {
         },
         body: form,
         signal: controller.signal
-      });
-    } finally {
-      clearTimeout(timer);
-    }
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
 
-      console.error("STABILITY ERROR:", errorText);
+      console.error(
+        "STABILITY ERROR:",
+        response.status,
+        errorText
+      );
 
-      let message = `Stability AI lỗi HTTP ${response.status}`;
+      let providerMessage = "";
 
       try {
         const parsed = JSON.parse(errorText);
 
-        message =
+        providerMessage =
           parsed?.errors?.join(", ") ||
           parsed?.message ||
-          message;
+          parsed?.name ||
+          "";
+
       } catch {
-        if (errorText) message = errorText.slice(0, 500);
+        providerMessage =
+          errorText.slice(0, 400);
       }
+
+      let message =
+        providerMessage ||
+        `Stability AI lỗi HTTP ${response.status}.`;
 
       if (response.status === 401) {
-        message = "API key Stability AI không hợp lệ.";
+        message =
+          "API key Stability AI không hợp lệ.";
+      } else if (response.status === 402) {
+        message =
+          "Tài khoản Stability AI không đủ credit.";
+      } else if (response.status === 403) {
+        message =
+          "Stability AI từ chối yêu cầu. Có thể liên quan đến quyền truy cập hoặc bộ lọc nội dung. Hãy kiểm tra thông báo chi tiết từ nhà cung cấp.";
+      } else if (response.status === 429) {
+        message =
+          "Bạn gửi yêu cầu quá nhanh. Hãy thử lại sau.";
+      } else if (response.status >= 500) {
+        message =
+          "Máy chủ Stability AI đang gặp sự cố. Hãy thử lại sau.";
       }
 
-      if (response.status === 402) {
-        message = "Tài khoản Stability AI không đủ credit.";
-      }
-
-      if (response.status === 403) {
-        message = "Yêu cầu tạo ảnh bị từ chối bởi bộ lọc an toàn.";
-      }
-
-      if (response.status === 429) {
-        message = "Bạn đang gửi yêu cầu quá nhanh. Hãy thử lại sau.";
-      }
-
-      return sendError(res, response.status, message);
+      return sendError(
+        res,
+        response.status,
+        message
+      );
     }
 
     const imageBuffer = Buffer.from(
@@ -551,28 +659,34 @@ app.post("/api/generate-image", async (req, res) => {
       return sendError(
         res,
         502,
-        "Stability AI không trả về ảnh."
+        "Stability AI không trả về dữ liệu hình ảnh."
       );
     }
 
-    const imageBase64 = imageBuffer.toString("base64");
+    const imageBase64 =
+      imageBuffer.toString("base64");
 
     return res.json({
       success: true,
       image: `data:image/png;base64,${imageBase64}`,
       mimeType: "image/png",
       provider: "Stability AI",
-      model: "Stable Image Core"
+      model: "Stable Image Core",
+      originalPrompt,
+      aspectRatio
     });
 
   } catch (error) {
-    console.error("IMAGE GENERATION ERROR:", error);
+    console.error(
+      "IMAGE GENERATION ERROR:",
+      error
+    );
 
     if (error.name === "AbortError") {
       return sendError(
         res,
         504,
-        "Tạo ảnh mất quá nhiều thời gian. Hãy thử lại."
+        "Tạo ảnh quá lâu. Vui lòng thử lại."
       );
     }
 
@@ -581,13 +695,18 @@ app.post("/api/generate-image", async (req, res) => {
       500,
       error.message || "Không thể tạo ảnh."
     );
+
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 });
 
-// ================================
+// ======================================
 // VOICE TRANSCRIPTION
 // GROQ WHISPER
-// ================================
+// ======================================
 
 app.post("/api/transcribe", async (req, res) => {
   try {
@@ -600,9 +719,14 @@ app.post("/api/transcribe", async (req, res) => {
     }
 
     const audioBase64 = req.body?.audio;
-    const mimeType = req.body?.mimeType || "audio/webm";
 
-    if (!audioBase64 || typeof audioBase64 !== "string") {
+    const mimeType =
+      req.body?.mimeType || "audio/webm";
+
+    if (
+      !audioBase64 ||
+      typeof audioBase64 !== "string"
+    ) {
       return sendError(
         res,
         400,
@@ -615,7 +739,10 @@ app.post("/api/transcribe", async (req, res) => {
       "base64"
     );
 
-    if (!audioBuffer.length || audioBuffer.length > 20 * 1024 * 1024) {
+    if (
+      !audioBuffer.length ||
+      audioBuffer.length > 20 * 1024 * 1024
+    ) {
       return sendError(
         res,
         400,
@@ -633,11 +760,18 @@ app.post("/api/transcribe", async (req, res) => {
 
     form.append(
       "file",
-      new Blob([audioBuffer], { type: mimeType }),
+      new Blob(
+        [audioBuffer],
+        { type: mimeType }
+      ),
       `recording.${extension}`
     );
 
-    form.append("model", "whisper-large-v3-turbo");
+    form.append(
+      "model",
+      "whisper-large-v3-turbo"
+    );
+
     form.append("language", "vi");
     form.append("response_format", "json");
 
@@ -652,7 +786,9 @@ app.post("/api/transcribe", async (req, res) => {
       }
     );
 
-    const data = await response.json().catch(() => ({}));
+    const data = await response.json().catch(
+      () => ({})
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -667,19 +803,23 @@ app.post("/api/transcribe", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("TRANSCRIBE ERROR:", error);
+    console.error(
+      "TRANSCRIBE ERROR:",
+      error
+    );
 
     return sendError(
       res,
       500,
-      error.message || "Lỗi nhận diện giọng nói."
+      error.message ||
+        "Lỗi nhận diện giọng nói."
     );
   }
 });
 
-// ================================
+// ======================================
 // FALLBACK
-// ================================
+// ======================================
 
 app.get("/", (req, res) => {
   res.sendFile(
@@ -694,9 +834,9 @@ app.use((req, res) => {
   });
 });
 
-// ================================
+// ======================================
 // START SERVER
-// ================================
+// ======================================
 
 app.listen(PORT, () => {
   console.log("--------------------------------");
@@ -704,7 +844,13 @@ app.listen(PORT, () => {
   console.log("Port:", PORT);
   console.log("Text model:", MODEL);
   console.log("Vision model:", VISION_MODEL);
-  console.log("Groq configured:", Boolean(GROQ_API_KEY));
-  console.log("Stability configured:", Boolean(STABILITY_API_KEY));
+  console.log(
+    "Groq configured:",
+    Boolean(GROQ_API_KEY)
+  );
+  console.log(
+    "Stability configured:",
+    Boolean(STABILITY_API_KEY)
+  );
   console.log("--------------------------------");
 });
