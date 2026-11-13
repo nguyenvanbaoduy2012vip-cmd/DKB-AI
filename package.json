@@ -1,14 +1,13 @@
-
 {
-  "name": "dkb-ai",
-  "version": "1.0.0",
-  "description": "DKB AI Backend",
+  "name": "dkb-ai-supabase",
+  "version": "2.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "@supabase/supabase-js": "^2.57.0"
   },
   "engines": {
     "node": ">=18"
